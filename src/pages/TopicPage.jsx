@@ -148,14 +148,6 @@ function TopicPage() {
           <CollaborativeEditor
             key={`editor-${id}`}
             topicId={id}
-            editorType="content"
-            initialContent={workspace?.content?.blocks}
-            onSave={handleContentSave}
-            onReloadNeeded={async () => {
-              const updatedWorkspace = await api.getWorkspace(id)
-              setWorkspace(updatedWorkspace)
-              return updatedWorkspace.content?.blocks || []
-            }}
           />
         </div>
 

@@ -1,6 +1,19 @@
+/* Collaborative Editor */
+.collaborative-editor {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--card-bg);
+    border: 2px solid rgba(0, 255, 65, 0.2);
+    border-radius: 15px;
+    overflow: hidden;
+}
+
 .editor-section {
     margin-bottom: 0;
-    min-height: calc(100vh - 400px);
+    height: calc(100vh - 400px);
+    display: flex;
+    flex-direction: column;
 }
 
 .editor-container {
@@ -8,7 +21,9 @@
     border: 2px solid rgba(0, 255, 65, 0.2);
     border-radius: 15px;
     overflow: hidden;
-    min-height: calc(100vh - 400px);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .editor-toolbar {
@@ -149,47 +164,78 @@
     text-align: center;
 }
 
-.notion-editor-wrapper {
+/* Editor Wrapper - 세로 100% */
+.editor-wrapper {
+    flex: 1;
+    overflow: auto;
     padding: 20px;
-    min-height: calc(100vh - 500px);
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.notion-editor-wrapper {
+    flex: 1;
+    overflow: auto;
+    padding: 20px;
     background: rgba(0, 0, 0, 0.3);
 }
 
 /* BlockNote Editor Dark Theme Customization */
+.editor-wrapper .bn-container,
 .notion-editor-wrapper .bn-container {
     background: transparent !important;
+    height: 100%;
 }
 
+.editor-wrapper .bn-editor,
 .notion-editor-wrapper .bn-editor {
     color: var(--text-light) !important;
+    height: 100%;
 }
 
+.editor-wrapper .bn-block-content,
 .notion-editor-wrapper .bn-block-content {
     color: var(--text-light) !important;
 }
 
+.editor-wrapper .ProseMirror,
 .notion-editor-wrapper .ProseMirror {
     color: var(--text-light) !important;
     background: transparent !important;
+    min-height: 100%;
 }
 
+.editor-wrapper .bn-block,
 .notion-editor-wrapper .bn-block {
     color: var(--text-light) !important;
 }
 
+.editor-wrapper .bn-inline-content,
 .notion-editor-wrapper .bn-inline-content {
     color: var(--text-light) !important;
 }
 
 /* Mantine dark theme override */
+.editor-wrapper [data-mantine-color-scheme="dark"],
 .notion-editor-wrapper [data-mantine-color-scheme="dark"] {
     --mantine-color-text: var(--text-light);
     --mantine-color-body: transparent;
 }
 
+.editor-wrapper .mantine-Editor-root,
 .notion-editor-wrapper .mantine-Editor-root {
     background: transparent !important;
     color: var(--text-light) !important;
+}
+
+/* Connection status styling */
+.connection-status {
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.users-count {
+    color: var(--text-dim);
+    font-weight: 500;
 }
 
 @media (max-width: 768px) {

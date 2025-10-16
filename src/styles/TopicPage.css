@@ -155,7 +155,9 @@
 }
 
 .tab-content-container {
-    min-height: 400px;
+    height: calc(100vh - 450px);
+    display: flex;
+    flex-direction: column;
 }
 
 /* Shortcuts Help */
