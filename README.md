@@ -8,6 +8,7 @@
 
 - ⚛️ **React 기반 SPA**: 빠르고 반응형 사용자 인터페이스
 - 📝 **Notion 스타일 에디터**: BlockNote React 컴포넌트를 사용한 직관적인 콘텐츠 편집
+- 🔄 **실시간 협업**: Liveblocks 기반 다중 사용자 동시 편집
 - 💾 **자동저장 시스템**: 편집 후 2초 뒤 자동으로 저장 (debouncing)
 - 📂 **Workspace JSON 구조**: 모든 데이터가 workspace 폴더에 JSON 형태로 저장
 - 💬 **실시간 피드백 시스템**: 각 주제에 대한 의견 공유
@@ -22,6 +23,8 @@
 - **React 19**: 최신 React
 - **React Router DOM**: SPA 라우팅
 - **BlockNote React**: Notion 스타일 에디터
+- **Liveblocks**: 실시간 협업 서비스
+- **Yjs**: CRDT 기반 실시간 동기화
 - **Vite**: 빠른 빌드 도구
 
 ### Backend
@@ -29,7 +32,44 @@
 - **SQLite3**: 주제 데이터베이스
 - **File System**: JSON 기반 Workspace 저장
 
+### 실시간 협업
+- **Liveblocks**: 관리형 실시간 협업 플랫폼
+  - WebRTC 시그널링 서버 불필요
+  - 자동 재연결 및 충돌 해결
+  - 무료 플랜 제공 (월 1,000 MAU)
+  - 안정적인 P2P 연결
+
 ## 설치 및 실행
+
+### ⚙️ Liveblocks 설정 (필수)
+
+#### 로컬 개발 환경
+
+1. [Liveblocks](https://liveblocks.io) 회원가입
+2. Dashboard에서 새 프로젝트 생성
+3. API Keys에서 Public Key 복사
+4. `.env` 파일 생성:
+
+```bash
+VITE_LIVEBLOCKS_PUBLIC_KEY=pk_dev_your_actual_key_here
+```
+
+5. 패키지 설치:
+```bash
+npm install
+```
+
+#### GitHub Actions (CI/CD)
+
+1. GitHub Repository Settings → Secrets and variables → Actions
+2. **New repository secret** 클릭
+3. Secret 추가:
+   - Name: `VITE_LIVEBLOCKS_PUBLIC_KEY`
+   - Value: 복사한 Liveblocks Public Key
+
+**상세 가이드**: 
+- 로컬 개발: [LIVEBLOCKS_SETUP.md](./LIVEBLOCKS_SETUP.md)
+- CI/CD 배포: [GITHUB_ACTIONS_SETUP.md](./GITHUB_ACTIONS_SETUP.md)
 
 ### 🐳 Docker로 실행 (권장)
 
@@ -44,7 +84,6 @@ docker build -t sure-hackathon .
 docker run -d \
   --name sure-hackathon-app \
   -p 3000:3000 \
-  -p 5001:5001 \
   -v $(pwd)/data:/app/data \
   -v $(pwd)/workspace:/app/workspace \
   sure-hackathon
@@ -225,7 +264,6 @@ Publish/
 ├── workspace/                         # JSON 데이터 저장소
 │   └── topic_*.json                  # 각 주제별 workspace 파일
 ├── server.js                          # Express API 서버
-├── webrtc-signaling-server.js        # WebRTC 시그널링 서버
 ├── .github/
 │   └── workflows/
 │       └── docker-build.yml          # GitHub Actions 워크플로우

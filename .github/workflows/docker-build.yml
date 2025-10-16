@@ -28,6 +28,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Create .env file
+        run: |
+          echo "VITE_LIVEBLOCKS_PUBLIC_KEY=${{ secrets.VITE_LIVEBLOCKS_PUBLIC_KEY }}" > .env
+          echo "✅ .env file created with Liveblocks API key"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 

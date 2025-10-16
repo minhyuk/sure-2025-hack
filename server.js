@@ -505,33 +505,19 @@ async function startServer() {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 슈어해커톤 서버가 http://0.0.0.0:${PORT} 에서 실행 중입니다!`);
     console.log(`   컨테이너 내부: http://0.0.0.0:${PORT}`);
+    console.log(`   실시간 협업: Liveblocks 사용`);
     if (process.env.NODE_ENV !== 'production') {
       console.log(`   개발 모드: Vite HMR 활성화`);
     }
   });
 
-  // Auto-start WebRTC Signaling server (after main server starts)
-  const { spawn } = require('child_process');
-  const webrtcSignalingServer = spawn('node', ['webrtc-signaling-server.js'], {
-    stdio: 'inherit',
-    detached: false
-  });
-
-  console.log('🔄 WebRTC Signaling 서버를 자동으로 시작합니다...');
-
-  // Cleanup on exit
-  process.on('exit', () => {
-    webrtcSignalingServer.kill();
-  });
-
+  // Graceful shutdown
   process.on('SIGINT', () => {
     console.log('\n👋 서버를 종료합니다...');
-    webrtcSignalingServer.kill();
     process.exit(0);
   });
 
   process.on('SIGTERM', () => {
-    webrtcSignalingServer.kill();
     process.exit(0);
   });
 }

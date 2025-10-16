@@ -41,7 +41,6 @@ COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
 # Copy server files
 COPY --chown=nodejs:nodejs server.js .
-COPY --chown=nodejs:nodejs webrtc-signaling-server.js .
 COPY --chown=nodejs:nodejs subjects.csv .
 
 # Create necessary directories with proper permissions
@@ -53,8 +52,7 @@ USER nodejs
 
 # Expose ports
 # 3000: Main HTTP server
-# 5001: WebRTC signaling server
-EXPOSE 3000 5001
+EXPOSE 3000
 
 # Environment variables
 ENV PORT=3000

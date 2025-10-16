@@ -1,7 +1,7 @@
 {
   "name": "sure-hackerton",
   "version": "1.0.0",
-  "description": "AI 바이브코딩 슈어해커톤 - 실시간 협업 에디터 (BlockNote + WebRTC)",
+  "description": "AI 바이브코딩 슈어해커톤 - 실시간 협업 에디터 (BlockNote + Liveblocks)",
   "main": "server.js",
   "scripts": {
     "dev": "node server.js",
@@ -14,7 +14,7 @@
     "ai",
     "vibe-coding",
     "blocknote",
-    "webrtc",
+    "liveblocks",
     "yjs",
     "real-time-collaboration"
   ],
@@ -24,6 +24,9 @@
     "@blocknote/core": "^0.41.1",
     "@blocknote/mantine": "^0.41.1",
     "@blocknote/react": "^0.41.1",
+    "@liveblocks/client": "^2.19.0",
+    "@liveblocks/react": "^2.19.0",
+    "@liveblocks/yjs": "^2.19.0",
     "body-parser": "^1.20.2",
     "csv-parse": "^5.5.3",
     "express": "^4.18.2",
@@ -31,11 +34,6 @@
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.4",
     "sqlite3": "^5.1.6",
-    "ws": "^8.18.3",
-    "y-indexeddb": "^9.0.12",
-    "y-protocols": "^1.0.6",
-    "y-webrtc": "^10.3.0",
-    "y-websocket": "^3.0.0",
     "yjs": "^13.6.27"
   },
   "devDependencies": {
