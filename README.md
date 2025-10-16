@@ -33,13 +33,14 @@
 
 ### 🐳 Docker로 실행 (권장)
 
-#### 1. Docker 이미지 빌드
-```bash
-docker build -t sure-hackathon .
+#### Windows에서 간편 배포
+```batch
+deploy.bat
 ```
 
-#### 2. Docker 컨테이너 실행
+#### Linux/Mac에서 실행
 ```bash
+docker build -t sure-hackathon .
 docker run -d \
   --name sure-hackathon-app \
   -p 3000:3000 \
@@ -49,25 +50,73 @@ docker run -d \
   sure-hackathon
 ```
 
-#### 3. 브라우저에서 접속
+#### 브라우저에서 접속
 ```
 http://localhost:3000
 ```
 
 #### 컨테이너 관리
 ```bash
+# 로그 확인
+docker logs -f sure-hackathon-app
+
 # 컨테이너 중지
 docker stop sure-hackathon-app
 
 # 컨테이너 시작
 docker start sure-hackathon-app
 
-# 로그 확인
-docker logs -f sure-hackathon-app
+# 컨테이너 재시작
+docker restart sure-hackathon-app
 
 # 컨테이너 삭제
 docker rm -f sure-hackathon-app
 ```
+
+### 🔄 Jenkins CI/CD (자동 배포)
+
+#### Jenkins 파이프라인 설정
+
+1. **Jenkins 새 아이템 생성**
+   - Pipeline 프로젝트 생성
+   - "Pipeline script from SCM" 선택
+   - Git 저장소 URL 입력
+
+2. **필수 플러그인**
+   - Docker Pipeline
+   - Git Plugin
+
+3. **Jenkins 시스템 설정**
+   - Docker가 Jenkins에서 실행 가능하도록 설정
+   - Windows의 경우: Docker Desktop 설치 및 실행
+
+4. **빌드 트리거**
+   - GitHub webhook 설정 (자동 빌드)
+   - 또는 정기적인 폴링 (예: */5 * * * *)
+
+5. **환경 변수 (선택사항)**
+   - `HOST_PORT`: 외부 포트 (기본: 3000)
+   - `SIGNALING_PORT`: WebRTC 시그널링 포트 (기본: 5001)
+   - `DATA_PATH`: 데이터 저장 경로
+   - `WORKSPACE_PATH`: Workspace 저장 경로
+
+#### 파이프라인 동작 과정
+```
+1. Git Clone → 2. 이전 컨테이너 중지 → 3. Docker 이미지 빌드
+→ 4. 데이터 디렉토리 생성 → 5. 새 컨테이너 실행 → 6. Health Check
+```
+
+#### 수동 배포 (Windows)
+```batch
+deploy.bat
+```
+
+이 스크립트는 다음을 자동으로 수행합니다:
+- 기존 컨테이너 중지 및 제거
+- Docker 이미지 빌드
+- 데이터 디렉토리 생성
+- 새 컨테이너 실행
+- 상태 확인
 
 ### 💻 로컬 개발 환경
 
@@ -98,33 +147,37 @@ npm start
 ```
 Publish/
 ├── src/
-│   ├── components/              # React 컴포넌트
-│   │   ├── NotionEditor.jsx    # Notion 스타일 에디터
-│   │   ├── FeedbackSection.jsx # 피드백 섹션
-│   │   ├── IdeasSection.jsx    # 아이디어 섹션
-│   │   └── PageNavigator.jsx   # 페이지 네비게이터
-│   ├── pages/                   # 페이지 컴포넌트
-│   │   ├── HomePage.jsx        # 메인 페이지
-│   │   └── TopicPage.jsx       # 주제 상세 페이지
+│   ├── components/                    # React 컴포넌트
+│   │   ├── CollaborativeEditor.jsx   # 통합 Notion 스타일 에디터
+│   │   └── PageNavigator.jsx         # 페이지 네비게이터
+│   ├── pages/                         # 페이지 컴포넌트
+│   │   ├── HomePage.jsx              # 메인 페이지
+│   │   └── TopicPage.jsx             # 주제 상세 페이지
 │   ├── services/
-│   │   └── api.js              # API 서비스
+│   │   └── api.js                    # API 서비스
 │   ├── hooks/
-│   │   └── useAutoSave.js      # 자동저장 훅
-│   ├── styles/                  # CSS 모듈
+│   │   └── useAutoSave.js            # 자동저장 훅
+│   ├── styles/                        # CSS 모듈
 │   │   ├── index.css
 │   │   ├── HomePage.css
 │   │   ├── TopicPage.css
 │   │   ├── NotionEditor.css
-│   │   ├── CommentSection.css
 │   │   └── PageNavigator.css
-│   ├── App.jsx                  # 메인 앱 컴포넌트
-│   └── main.jsx                 # React 진입점
-├── workspace/                   # JSON 데이터 저장소
-│   └── topic_*.json            # 각 주제별 workspace 파일
-├── server.js                    # Express API 서버
-├── vite.config.js              # Vite 설정
+│   ├── utils/
+│   │   └── clearIndexedDB.js         # IndexedDB 관리
+│   ├── App.jsx                        # 메인 앱 컴포넌트
+│   └── main.jsx                       # React 진입점
+├── workspace/                         # JSON 데이터 저장소
+│   └── topic_*.json                  # 각 주제별 workspace 파일
+├── server.js                          # Express API 서버
+├── webrtc-signaling-server.js        # WebRTC 시그널링 서버
+├── Jenkinsfile                        # Jenkins CI/CD 파이프라인
+├── deploy.bat                         # Windows 배포 스크립트
+├── Dockerfile                         # Docker 이미지 빌드
+├── subjects.csv                       # 주제 데이터
+├── vite.config.js                    # Vite 설정
 ├── package.json
-└── index.html                   # HTML 진입점
+└── index.html                         # HTML 진입점
 ```
 
 ## API 엔드포인트
