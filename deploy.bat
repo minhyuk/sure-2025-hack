@@ -71,8 +71,24 @@ echo.
 echo 실행 중인 컨테이너:
 docker ps -f name=%CONTAINER_NAME%
 
+REM 현재 서버의 IP 주소 감지
+for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
+    set SERVER_IP=%%a
+    goto :found_ip
+)
+:found_ip
+REM 공백 제거
+for /f "tokens=* delims= " %%a in ("%SERVER_IP%") do set SERVER_IP=%%a
+
 echo.
 echo 애플리케이션 접속:
+if not "%SERVER_IP%"=="" (
+    echo   [원격 접속]
+    echo   HTTP Server:    http://%SERVER_IP%:%HTTP_PORT%
+    echo   WebRTC Server:  ws://%SERVER_IP%:%WEBRTC_PORT%
+    echo.
+)
+echo   [로컬 접속]
 echo   HTTP Server:    http://localhost:%HTTP_PORT%
 echo   WebRTC Server:  ws://localhost:%WEBRTC_PORT%
 echo.

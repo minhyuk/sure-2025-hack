@@ -504,7 +504,7 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 슈어해커톤 서버가 http://0.0.0.0:${PORT} 에서 실행 중입니다!`);
-    console.log(`   외부 접속 URL: http://10.10.10.200:${PORT}`);
+    console.log(`   컨테이너 내부: http://0.0.0.0:${PORT}`);
     if (process.env.NODE_ENV !== 'production') {
       console.log(`   개발 모드: Vite HMR 활성화`);
     }

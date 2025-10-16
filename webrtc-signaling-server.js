@@ -28,22 +28,10 @@ function getRoom(roomName) {
 }
 
 wss.on('connection', (ws, req) => {
-  const url = new URL(req.url, `http://${req.headers.host}`)
-  const roomName = url.searchParams.get('room') || 'default'
-
-  ws.room = roomName
   ws.isAlive = true
+  ws.room = null // Will be set when client subscribes
 
-  const room = getRoom(roomName)
-  room.add(ws)
-
-  console.log(`✅ Client connected to signaling room: ${roomName} (Total in room: ${room.size})`)
-
-  // Send current room members to the new client
-  ws.send(JSON.stringify({
-    type: 'peers',
-    peers: Array.from(room).filter(client => client !== ws).map((_, index) => index)
-  }))
+  console.log(`🔌 Client connected (waiting for room subscription)`)
 
   ws.on('pong', () => {
     ws.isAlive = true
@@ -53,34 +41,95 @@ wss.on('connection', (ws, req) => {
     try {
       const data = JSON.parse(message)
 
-      // Broadcast signaling messages to all peers in the same room
-      room.forEach(client => {
-        if (client !== ws && client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify(data))
+      // Handle y-webrtc signaling protocol
+      if (data.type === 'subscribe') {
+        // Client is subscribing to a room
+        const topics = data.topics || []
+        if (topics.length > 0) {
+          const roomName = topics[0] // y-webrtc sends room name in topics array
+          
+          // Remove from old room if exists
+          if (ws.room) {
+            const oldRoom = getRoom(ws.room)
+            oldRoom.delete(ws)
+          }
+
+          // Add to new room
+          ws.room = roomName
+          const room = getRoom(roomName)
+          room.add(ws)
+
+          console.log(`✅ Client subscribed to room: ${roomName} (Total in room: ${room.size})`)
+
+          // Notify client of subscription success
+          ws.send(JSON.stringify({
+            type: 'subscribe',
+            topics: [roomName]
+          }))
+
+          return
         }
-      })
+      }
+
+      // Handle y-webrtc publish messages (signaling data)
+      if (data.type === 'publish' && ws.room) {
+        const topics = data.topics || []
+        if (topics.length > 0 && topics[0] === ws.room) {
+          const room = getRoom(ws.room)
+          
+          // Broadcast to all peers in the same room except sender
+          room.forEach(client => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(data))
+            }
+          })
+        }
+        return
+      }
+
+      // Handle ping/pong for y-webrtc
+      if (data.type === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong' }))
+        return
+      }
+
+      // Fallback: broadcast any other message to room
+      if (ws.room) {
+        const room = getRoom(ws.room)
+        room.forEach(client => {
+          if (client !== ws && client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(data))
+          }
+        })
+      }
+
     } catch (err) {
       console.error('Error processing message:', err)
     }
   })
 
   ws.on('close', () => {
-    room.delete(ws)
-    console.log(`❌ Client disconnected from room: ${roomName} (Remaining: ${room.size})`)
+    if (ws.room) {
+      const room = getRoom(ws.room)
+      room.delete(ws)
+      console.log(`❌ Client disconnected from room: ${ws.room} (Remaining: ${room.size})`)
 
-    // Clean up empty rooms
-    if (room.size === 0) {
-      rooms.delete(roomName)
-      console.log(`🗑️  Room ${roomName} cleaned up`)
-    } else {
-      // Notify remaining clients about peer leaving
-      room.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify({
-            type: 'peer-left'
-          }))
-        }
-      })
+      // Clean up empty rooms
+      if (room.size === 0) {
+        rooms.delete(ws.room)
+        console.log(`🗑️  Room ${ws.room} cleaned up`)
+      } else {
+        // Notify remaining clients about peer leaving
+        room.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+              type: 'publish',
+              topics: [ws.room],
+              // y-webrtc peer disconnect notification
+            }))
+          }
+        })
+      }
     }
   })
 

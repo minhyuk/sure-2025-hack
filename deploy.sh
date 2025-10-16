@@ -77,10 +77,23 @@ echo ""
 echo -e "${YELLOW}실행 중인 컨테이너:${NC}"
 docker ps -f name=$CONTAINER_NAME
 
+# 현재 서버의 IP 주소 감지
+SERVER_IP=$(hostname -I | awk '{print $1}')
+if [ -z "$SERVER_IP" ]; then
+    SERVER_IP=$(ip route get 1 | awk '{print $7;exit}' 2>/dev/null)
+fi
+
 echo ""
 echo -e "${GREEN}애플리케이션 접속:${NC}"
-echo -e "  HTTP Server:    ${GREEN}http://localhost:$HTTP_PORT${NC}"
-echo -e "  WebRTC Server:  ${GREEN}ws://localhost:$WEBRTC_PORT${NC}"
+if [ -n "$SERVER_IP" ]; then
+    echo -e "  ${GREEN}[원격 접속]${NC}"
+    echo -e "  HTTP Server:    ${GREEN}http://$SERVER_IP:$HTTP_PORT${NC}"
+    echo -e "  WebRTC Server:  ${GREEN}ws://$SERVER_IP:$WEBRTC_PORT${NC}"
+    echo ""
+fi
+echo -e "  ${YELLOW}[로컬 접속]${NC}"
+echo -e "  HTTP Server:    ${YELLOW}http://localhost:$HTTP_PORT${NC}"
+echo -e "  WebRTC Server:  ${YELLOW}ws://localhost:$WEBRTC_PORT${NC}"
 echo ""
 echo -e "${YELLOW}로그 확인:${NC} docker logs -f $CONTAINER_NAME"
 echo -e "${YELLOW}컨테이너 중지:${NC} docker stop $CONTAINER_NAME"
