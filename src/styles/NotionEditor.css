@@ -1,0 +1,212 @@
+.editor-section {
+    margin-bottom: 0;
+    min-height: calc(100vh - 400px);
+}
+
+.editor-container {
+    background: var(--card-bg);
+    border: 2px solid rgba(0, 255, 65, 0.2);
+    border-radius: 15px;
+    overflow: hidden;
+    min-height: calc(100vh - 400px);
+}
+
+.editor-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.editor-info {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.editor-info span {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+}
+
+.save-status {
+    font-weight: 700;
+}
+
+.save-status.saved {
+    color: var(--primary-color);
+}
+
+.save-status.saving {
+    color: var(--accent-color);
+}
+
+.save-status.unsaved {
+    color: #ffaa00;
+}
+
+.save-status.error {
+    color: #ff4444;
+}
+
+.editor-version {
+    font-family: 'Orbitron', monospace;
+}
+
+.last-saved {
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+.editor-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.author-input {
+    padding: 8px 15px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    border-radius: 5px;
+    color: var(--text-light);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.author-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+}
+
+.save-btn {
+    font-family: 'Orbitron', monospace;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    border: none;
+    padding: 8px 20px;
+    color: var(--bg-darker);
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0, 255, 65, 0.4);
+}
+
+.connected-users.warning {
+    color: #ff4444;
+    font-weight: 700;
+    animation: pulse-warning 2s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.connection-warning {
+    padding: 12px 20px;
+    background: rgba(255, 68, 68, 0.1);
+    border-bottom: 1px solid rgba(255, 68, 68, 0.3);
+    color: #ff4444;
+    font-size: 0.9rem;
+    text-align: center;
+    font-weight: 700;
+    animation: slide-down 0.3s ease-out;
+}
+
+@keyframes slide-down {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.auto-save-notice {
+    padding: 10px 20px;
+    background: rgba(0, 255, 65, 0.05);
+    border-bottom: 1px solid rgba(0, 255, 65, 0.1);
+    color: var(--primary-color);
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.notion-editor-wrapper {
+    padding: 20px;
+    min-height: calc(100vh - 500px);
+    background: rgba(0, 0, 0, 0.3);
+}
+
+/* BlockNote Editor Dark Theme Customization */
+.notion-editor-wrapper .bn-container {
+    background: transparent !important;
+}
+
+.notion-editor-wrapper .bn-editor {
+    color: var(--text-light) !important;
+}
+
+.notion-editor-wrapper .bn-block-content {
+    color: var(--text-light) !important;
+}
+
+.notion-editor-wrapper .ProseMirror {
+    color: var(--text-light) !important;
+    background: transparent !important;
+}
+
+.notion-editor-wrapper .bn-block {
+    color: var(--text-light) !important;
+}
+
+.notion-editor-wrapper .bn-inline-content {
+    color: var(--text-light) !important;
+}
+
+/* Mantine dark theme override */
+.notion-editor-wrapper [data-mantine-color-scheme="dark"] {
+    --mantine-color-text: var(--text-light);
+    --mantine-color-body: transparent;
+}
+
+.notion-editor-wrapper .mantine-Editor-root {
+    background: transparent !important;
+    color: var(--text-light) !important;
+}
+
+@media (max-width: 768px) {
+    .editor-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .editor-info {
+        width: 100%;
+    }
+
+    .editor-actions {
+        width: 100%;
+    }
+
+    .author-input {
+        flex: 1;
+    }
+}

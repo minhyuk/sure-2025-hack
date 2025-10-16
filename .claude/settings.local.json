@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run server:dev:*)",
+      "Bash(node server.js)",
+      "Bash(curl:*)",
+      "WebSearch",
+      "Bash(npm uninstall:*)",
+      "Bash(lsof:*)",
+      "Bash(kill:*)",
+      "Bash(netstat:*)",
+      "Bash(npm run dev)",
+      "Bash(python3:*)",
+      "Bash(pkill:*)",
+      "Bash(ip addr:*)",
+      "Bash(ss:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
