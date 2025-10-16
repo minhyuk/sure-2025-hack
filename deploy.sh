@@ -8,7 +8,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 CONTAINER_NAME="sure-hackerton"
-IMAGE_NAME="ghcr.io/minhyuk/sure-2025-hack:latest"
+IMAGE_NAME="ghcr.io/minhyuk/sure-2025-hack:main"
 HTTP_PORT=3000
 WEBRTC_PORT=5001
 DATA_VOLUME="sure-hackerton-data"
@@ -22,22 +22,21 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo -e "${YELLOW}GitHub Container Registry 로그인...${NC}"
-# PAK 환경변수를 통해 Personal Access Token 전달
-if [ -z "$PAK" ]; then
-    echo -e "${RED}PAK 환경변수가 설정되지 않았습니다!${NC}"
-    echo -e "${YELLOW}사용법: PAK=your_token ./deploy.sh${NC}"
-    exit 1
+# PAK가 설정되어 있으면 로그인 (private 이미지용)
+# Public 이미지는 로그인 없이도 pull 가능
+if [ -n "$PAK" ]; then
+    echo -e "${YELLOW}GitHub Container Registry 로그인...${NC}"
+    echo "$PAK" | docker login ghcr.io -u minhyuk --password-stdin
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}로그인 실패!${NC}"
+        exit 1
+    fi
+    
+    echo -e "${GREEN}로그인 성공!${NC}"
+else
+    echo -e "${YELLOW}PAK 없이 진행 (public 이미지 모드)${NC}"
 fi
-
-echo "$PAK" | docker login ghcr.io -u minhyuk --password-stdin
-
-if [ $? -ne 0 ]; then
-    echo -e "${RED}로그인 실패!${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}로그인 성공!${NC}"
 
 echo -e "${YELLOW}기존 컨테이너 정리...${NC}"
 docker stop $CONTAINER_NAME 2>/dev/null

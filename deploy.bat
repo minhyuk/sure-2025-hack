@@ -1,7 +1,7 @@
 @echo off
 REM Configuration
 set CONTAINER_NAME=sure-hackerton
-set IMAGE_NAME=ghcr.io/minhyuk/sure-2025-hack:latest
+set IMAGE_NAME=ghcr.io/minhyuk/sure-2025-hack:main
 set HTTP_PORT=3000
 set WEBRTC_PORT=5001
 set DATA_VOLUME=sure-hackerton-data
@@ -15,21 +15,21 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-echo GitHub Container Registry 로그인...
-if "%PAK%"=="" (
-    echo PAK 환경변수가 설정되지 않았습니다!
-    echo 사용법: set PAK=your_token ^&^& deploy.bat
-    exit /b 1
+REM PAK가 설정되어 있으면 로그인 (private 이미지용)
+REM Public 이미지는 로그인 없이도 pull 가능
+if not "%PAK%"=="" (
+    echo GitHub Container Registry 로그인...
+    echo %PAK% | docker login ghcr.io -u minhyuk --password-stdin
+    
+    if %ERRORLEVEL% NEQ 0 (
+        echo 로그인 실패!
+        exit /b 1
+    )
+    
+    echo 로그인 성공!
+) else (
+    echo PAK 없이 진행 (public 이미지 모드)
 )
-
-echo %PAK% | docker login ghcr.io -u minhyuk --password-stdin
-
-if %ERRORLEVEL% NEQ 0 (
-    echo 로그인 실패!
-    exit /b 1
-)
-
-echo 로그인 성공!
 
 echo 기존 컨테이너 정리...
 docker stop %CONTAINER_NAME% 2>nul
