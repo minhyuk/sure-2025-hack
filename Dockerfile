@@ -8,7 +8,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install all dependencies (including dev dependencies for build)
-RUN npm ci
+# Use npm install instead of npm ci to handle lock file sync issues
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -33,7 +34,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --only=production && \
+# Use npm install instead of npm ci to handle lock file sync issues
+RUN npm install --omit=dev && \
     npm cache clean --force
 
 # Copy built frontend from builder
