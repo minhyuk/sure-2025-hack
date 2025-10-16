@@ -1,79 +1,80 @@
 @echo off
-REM ========================================
-REM Sure Hackathon Deployment Script
-REM Windows Environment
-REM ========================================
-
-echo.
-echo ========================================
-echo   Sure Hackathon Deployment
-echo ========================================
-echo.
-
 REM Configuration
-set IMAGE_NAME=sure-hackathon
-set CONTAINER_NAME=sure-hackathon-app
-set HOST_PORT=3000
-set SIGNALING_PORT=5001
+set CONTAINER_NAME=sure-hackerton
+set IMAGE_NAME=ghcr.io/minhyuk/sure-2025-hack:latest
+set HTTP_PORT=3000
+set WEBRTC_PORT=5001
+set DATA_VOLUME=sure-hackerton-data
+set WORKSPACE_VOLUME=sure-hackerton-workspace
 
-REM Get current directory
-set CURRENT_DIR=%CD%
-set DATA_PATH=%CURRENT_DIR%\data
-set WORKSPACE_PATH=%CURRENT_DIR%\workspace
+echo Docker 버전 확인...
+docker --version
 
-echo [1/7] Stopping old container...
+if %ERRORLEVEL% NEQ 0 (
+    echo Docker가 설치되어 있지 않습니다!
+    exit /b 1
+)
+
+echo GitHub Container Registry 로그인...
+if "%PAK%"=="" (
+    echo PAK 환경변수가 설정되지 않았습니다!
+    echo 사용법: set PAK=your_token ^&^& deploy.bat
+    exit /b 1
+)
+
+echo %PAK% | docker login ghcr.io -u minhyuk --password-stdin
+
+if %ERRORLEVEL% NEQ 0 (
+    echo 로그인 실패!
+    exit /b 1
+)
+
+echo 로그인 성공!
+
+echo 기존 컨테이너 정리...
 docker stop %CONTAINER_NAME% 2>nul
 docker rm %CONTAINER_NAME% 2>nul
 
-echo [2/7] Removing old image...
-docker rmi %IMAGE_NAME%:latest 2>nul
+echo 최신 이미지 다운로드...
+docker pull %IMAGE_NAME%
 
-echo [3/7] Building Docker image...
-docker build -t %IMAGE_NAME%:latest .
-if errorlevel 1 (
-    echo ERROR: Docker build failed!
-    pause
+if %ERRORLEVEL% NEQ 0 (
+    echo 이미지 다운로드 실패!
     exit /b 1
 )
 
-echo [4/7] Creating data directories...
-if not exist "%DATA_PATH%" mkdir "%DATA_PATH%"
-if not exist "%WORKSPACE_PATH%" mkdir "%WORKSPACE_PATH%"
+echo 볼륨 생성 (없으면)...
+docker volume create %DATA_VOLUME% 2>nul
+docker volume create %WORKSPACE_VOLUME% 2>nul
 
-echo [5/7] Starting container...
+echo 새 컨테이너 실행...
 docker run -d ^
-  --name %CONTAINER_NAME% ^
-  --restart unless-stopped ^
-  -p %HOST_PORT%:3000 ^
-  -p %SIGNALING_PORT%:5001 ^
-  -v "%DATA_PATH%":/app/data ^
-  -v "%WORKSPACE_PATH%":/app/workspace ^
-  %IMAGE_NAME%:latest
+    --name %CONTAINER_NAME% ^
+    -p %HTTP_PORT%:3000 ^
+    -p %WEBRTC_PORT%:5001 ^
+    -v %DATA_VOLUME%:/app/data ^
+    -v %WORKSPACE_VOLUME%:/app/workspace ^
+    -e NODE_ENV=production ^
+    -e PORT=3000 ^
+    -e DB_PATH=/app/data/hackathon.db ^
+    --restart unless-stopped ^
+    %IMAGE_NAME%
 
-if errorlevel 1 (
-    echo ERROR: Failed to start container!
-    pause
+if %ERRORLEVEL% NEQ 0 (
+    echo 컨테이너 실행 실패!
     exit /b 1
 )
 
-echo [6/7] Waiting for container to be ready...
-timeout /t 5 /nobreak >nul
+echo.
+echo 컨테이너 실행 완료!
+echo.
+echo 실행 중인 컨테이너:
+docker ps -f name=%CONTAINER_NAME%
 
-echo [7/7] Checking container status...
-docker ps | findstr %CONTAINER_NAME%
-
 echo.
-echo ========================================
-echo   Deployment Complete! 🎉
-echo ========================================
+echo 애플리케이션 접속:
+echo   HTTP Server:    http://localhost:%HTTP_PORT%
+echo   WebRTC Server:  ws://localhost:%WEBRTC_PORT%
 echo.
-echo   Application URL: http://localhost:%HOST_PORT%
-echo   WebRTC Signaling: ws://localhost:%SIGNALING_PORT%
-echo.
-echo   Useful commands:
-echo   - View logs:    docker logs -f %CONTAINER_NAME%
-echo   - Stop:         docker stop %CONTAINER_NAME%
-echo   - Restart:      docker restart %CONTAINER_NAME%
-echo   - Remove:       docker rm -f %CONTAINER_NAME%
-echo.
-pause
+echo 로그 확인: docker logs -f %CONTAINER_NAME%
+echo 컨테이너 중지: docker stop %CONTAINER_NAME%
