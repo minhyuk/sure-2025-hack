@@ -2,7 +2,7 @@ const http = require('http')
 const WebSocket = require('ws')
 
 const PORT = 5001
-const PING_INTERVAL = 30000
+const PING_INTERVAL = 60000  // Increased from 30s to 60s for more stable connections
 
 // Create HTTP server
 const server = http.createServer((req, res) => {
@@ -29,12 +29,14 @@ function getRoom(roomName) {
 
 wss.on('connection', (ws, req) => {
   ws.isAlive = true
+  ws.missedPings = 0  // Track consecutive missed pings
   ws.room = null // Will be set when client subscribes
 
   console.log(`🔌 Client connected (waiting for room subscription)`)
 
   ws.on('pong', () => {
     ws.isAlive = true
+    ws.missedPings = 0  // Reset counter on successful pong
   })
 
   ws.on('message', (message) => {
@@ -119,6 +121,7 @@ wss.on('connection', (ws, req) => {
       // Handle ping/pong for y-webrtc
       if (data.type === 'ping') {
         ws.isAlive = true  // Mark as alive when receiving y-webrtc ping
+        ws.missedPings = 0  // Reset counter on successful ping
         ws.send(JSON.stringify({ type: 'pong' }))
         return
       }
@@ -175,9 +178,19 @@ wss.on('connection', (ws, req) => {
 const heartbeat = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (ws.isAlive === false) {
-      console.log('⚠️ Terminating inactive connection (no response in 30s)')
-      return ws.terminate()
+      ws.missedPings++
+      console.log(`⚠️ Missed ping #${ws.missedPings} from client${ws.room ? ` in room ${ws.room}` : ''}`)
+      
+      // Only terminate after 3 consecutive missed pings (3 minutes with 60s interval)
+      if (ws.missedPings >= 3) {
+        console.log(`❌ Terminating inactive connection (no response for ${ws.missedPings * PING_INTERVAL / 1000}s)`)
+        return ws.terminate()
+      }
+    } else {
+      // Reset missed pings if client was alive
+      ws.missedPings = 0
     }
+    
     ws.isAlive = false
     
     // Send both WebSocket ping AND y-webrtc JSON ping

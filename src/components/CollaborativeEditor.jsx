@@ -334,11 +334,15 @@ function CollaborativeEditor({
     }
 
     // Safety check: Only save if we're synced with other users
+    // Allow saving when:
+    // - User is alone (connectedUsers === 1)
+    // - Connected to room (isRoomConnected === true)
+    // Note: If multiple users but not connected, we still allow save to prevent data loss
+    // WebRTC will handle conflict resolution when connection is re-established
     if (!isRoomConnected && connectedUsers > 1) {
-      console.warn('⚠️ Cannot save: Not connected to collaboration room')
-      console.log('   Waiting for room connection to prevent data conflicts...')
-      setSaveStatus('error')
-      return
+      console.warn('⚠️ Not connected to collaboration room, but saving anyway to prevent data loss')
+      console.log('   WebRTC will sync changes when connection is restored')
+      // Don't return - allow save to continue
     }
 
     try {
