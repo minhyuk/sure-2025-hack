@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useCreateBlockNote } from '@blocknote/react'
+import { useCreateBlockNoteWithLiveblocks } from '@liveblocks/react-blocknote'
 import { BlockNoteView } from '@blocknote/mantine'
 import '@blocknote/mantine/style.css'
-import * as Y from 'yjs'
-import { LiveblocksProvider } from '@liveblocks/yjs'
 import { RoomProvider, useRoom, useOthers, useStatus } from '../liveblocks.config'
 import useAutoSave from '../hooks/useAutoSave'
 import '../styles/NotionEditor.css'
@@ -19,49 +17,19 @@ function CollaborativeEditorInner({
   const [lastSaved, setLastSaved] = useState(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const lastBlockCountRef = useRef(0)
-  const docRef = useRef(null)
-  const providerRef = useRef(null)
-  const room = useRoom()
-  
+
   // Liveblocks 연결 상태
   const status = useStatus()
   const others = useOthers()
   const connectedUsers = others.length + 1
   const isRoomConnected = status === 'connected'
 
-  // Yjs 문서와 Liveblocks Provider 초기화
-  useEffect(() => {
-    if (!docRef.current) {
-      const doc = new Y.Doc()
-      docRef.current = doc
+  console.log(`🚀 Liveblocks Editor for ${editorType}`)
+  console.log(`   Room: ${editorType}-topic-${topicId}`)
+  console.log(`   Status: ${status}`)
 
-      const provider = new LiveblocksProvider(room, doc)
-      providerRef.current = provider
-
-      console.log(`🚀 Liveblocks Provider initialized for ${editorType}`)
-      console.log(`   Room: ${editorType}-topic-${topicId}`)
-      console.log(`   Status: ${status}`)
-    }
-
-    return () => {
-      if (providerRef.current) {
-        console.log(`🧹 Cleaning up ${editorType} Liveblocks provider`)
-        providerRef.current.destroy()
-        providerRef.current = null
-      }
-    }
-  }, [room, editorType, topicId, status])
-
-  // Editor 생성
-  const editor = useCreateBlockNote({
-    collaboration: docRef.current ? {
-      provider: providerRef.current,
-      fragment: docRef.current.getXmlFragment('document-store'),
-      user: {
-        name: 'Anonymous',
-        color: '#' + Math.floor(Math.random()*16777215).toString(16),
-      },
-    } : undefined,
+  // Editor 생성 with Liveblocks
+  const editor = useCreateBlockNoteWithLiveblocks({
     domAttributes: {
       editor: {
         class: 'bn-editor',
@@ -74,17 +42,8 @@ function CollaborativeEditorInner({
 
   // 초기 컨텐츠 로드
   useEffect(() => {
-    if (!isInitialized && editor && docRef.current && providerRef.current) {
-      const fragment = docRef.current.getXmlFragment('document-store')
-
-      // 이미 동기화된 내용이 있으면 사용
-      if (fragment.length > 0) {
-        console.log(`📥 ${editorType}: Using synced content (${fragment.length} blocks)`)
-        setIsInitialized(true)
-        return
-      }
-
-      // 서버 컨텐츠 로드
+    if (!isInitialized && editor) {
+      // 서버 컨텐츠 로드 (Liveblocks가 자동으로 동기화 처리)
       if (initialContent && initialContent.length > 0) {
         console.log(`📥 Loading ${editorType} server content...`, initialContent.length, 'blocks')
         try {
