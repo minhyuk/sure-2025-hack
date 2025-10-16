@@ -73,38 +73,93 @@ docker restart sure-hackathon-app
 docker rm -f sure-hackathon-app
 ```
 
-### 🔄 Jenkins CI/CD (자동 배포)
+### 🔄 CI/CD 자동 배포
 
-#### Jenkins 파이프라인 설정
+#### 배포 워크플로우
 
-1. **Jenkins 새 아이템 생성**
-   - Pipeline 프로젝트 생성
-   - "Pipeline script from SCM" 선택
-   - Git 저장소 URL 입력
+```mermaid
+GitHub Push → GitHub Actions (Build & Push) → GHCR → Jenkins (Pull & Deploy) → Production
+```
 
-2. **필수 플러그인**
-   - Docker Pipeline
-   - Git Plugin
+**1단계: GitHub Actions (자동 빌드 및 이미지 푸시)**
+- main/master 브랜치에 push 시 자동 실행
+- Docker 이미지 빌드
+- GitHub Container Registry (GHCR)에 이미지 푸시
+- 멀티 아키텍처 지원 (amd64, arm64)
 
-3. **Jenkins 시스템 설정**
-   - Docker가 Jenkins에서 실행 가능하도록 설정
-   - Windows의 경우: Docker Desktop 설치 및 실행
+**2단계: Jenkins (자동 배포)**
+- GHCR에서 최신 이미지 pull
+- 기존 컨테이너 중지 및 제거
+- 새 컨테이너 배포
+- Health check
 
-4. **빌드 트리거**
-   - GitHub webhook 설정 (자동 빌드)
-   - 또는 정기적인 폴링 (예: */5 * * * *)
+---
 
-5. **환경 변수 (선택사항)**
-   - `HOST_PORT`: 외부 포트 (기본: 3000)
-   - `SIGNALING_PORT`: WebRTC 시그널링 포트 (기본: 5001)
-   - `DATA_PATH`: 데이터 저장 경로
-   - `WORKSPACE_PATH`: Workspace 저장 경로
+#### 📦 GitHub Actions 설정
+
+저장소에 push하면 자동으로 Docker 이미지가 빌드됩니다.
+
+**필요한 설정:**
+1. GitHub 저장소 → Settings → Actions → General
+2. "Read and write permissions" 활성화
+3. push to main/master 시 자동 실행
+
+**생성되는 이미지:**
+- `ghcr.io/[username]/[repository]:latest`
+- `ghcr.io/[username]/[repository]:main`
+- `ghcr.io/[username]/[repository]:sha-xxxxxx`
+
+---
+
+#### 🤖 Jenkins 파이프라인 설정
+
+**1. Jenkins Credentials 생성**
+- Jenkins → Manage Jenkins → Credentials
+- Add Credentials (Username with password):
+  - ID: `github-username`
+  - Username: GitHub 사용자명
+  - Password: (공백)
+- Add Credentials (Secret text):
+  - ID: `github-token`
+  - Secret: GitHub Personal Access Token (read:packages 권한)
+
+**2. Personal Access Token 생성**
+- GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+- Generate new token with `read:packages` scope
+
+**3. Jenkins 파이프라인 생성**
+- New Item → Pipeline
+- Pipeline script from SCM:
+  - SCM: Git
+  - Repository URL: 저장소 URL
+  - Branch: */main (또는 */master)
+  - Script Path: `Jenkinsfile`
+
+**4. Jenkinsfile 환경 변수 수정**
+```groovy
+IMAGE_NAME = "${REGISTRY}/${GITHUB_USER}/your-repo-name"  // 실제 레포 이름으로 변경
+IMAGE_TAG = 'latest'  // 또는 'main', 특정 버전
+```
+
+**5. 빌드 트리거 (선택사항)**
+- Poll SCM: `H/5 * * * *` (5분마다 확인)
+- 또는 GitHub webhook 설정
+
+---
 
 #### 파이프라인 동작 과정
+
+**GitHub Actions (.github/workflows/docker-build.yml):**
 ```
-1. Git Clone → 2. 이전 컨테이너 중지 → 3. Docker 이미지 빌드
-→ 4. 데이터 디렉토리 생성 → 5. 새 컨테이너 실행 → 6. Health Check
+Checkout → Docker Buildx → Login to GHCR → Build & Push Image
 ```
+
+**Jenkins (Jenkinsfile):**
+```
+Login to GHCR → Pull Image → Stop Old Container → Deploy New Container → Health Check
+```
+
+---
 
 #### 수동 배포 (Windows)
 ```batch
@@ -113,7 +168,7 @@ deploy.bat
 
 이 스크립트는 다음을 자동으로 수행합니다:
 - 기존 컨테이너 중지 및 제거
-- Docker 이미지 빌드
+- Docker 이미지 로컬 빌드
 - 데이터 디렉토리 생성
 - 새 컨테이너 실행
 - 상태 확인
@@ -171,6 +226,9 @@ Publish/
 │   └── topic_*.json                  # 각 주제별 workspace 파일
 ├── server.js                          # Express API 서버
 ├── webrtc-signaling-server.js        # WebRTC 시그널링 서버
+├── .github/
+│   └── workflows/
+│       └── docker-build.yml          # GitHub Actions 워크플로우
 ├── Jenkinsfile                        # Jenkins CI/CD 파이프라인
 ├── deploy.bat                         # Windows 배포 스크립트
 ├── Dockerfile                         # Docker 이미지 빌드

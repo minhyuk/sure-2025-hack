@@ -2,7 +2,14 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'sure-hackathon'
+        // GitHub Container Registry 설정
+        REGISTRY = 'ghcr.io'
+        GITHUB_USER = credentials('github-username')  // Jenkins Credential ID
+        GITHUB_TOKEN = credentials('github-token')    // Jenkins Credential ID
+        IMAGE_NAME = "${REGISTRY}/${GITHUB_USER}/publish"  // 실제 레포 이름으로 변경 필요
+        IMAGE_TAG = 'latest'  // 또는 'main', 특정 버전 등
+
+        // 배포 설정
         CONTAINER_NAME = 'sure-hackathon-app'
         HOST_PORT = '3000'
         SIGNALING_PORT = '5001'
@@ -11,10 +18,23 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
+        stage('Login to Registry') {
             steps {
-                echo 'Cloning repository...'
-                checkout scm
+                script {
+                    echo 'Logging in to GitHub Container Registry...'
+                    bat """
+                        echo ${GITHUB_TOKEN} | docker login ${REGISTRY} -u ${GITHUB_USER} --password-stdin
+                    """
+                }
+            }
+        }
+
+        stage('Pull Docker Image') {
+            steps {
+                echo 'Pulling Docker image from registry...'
+                bat """
+                    docker pull ${IMAGE_NAME}:${IMAGE_TAG}
+                """
             }
         }
 
@@ -27,26 +47,6 @@ pipeline {
                         docker rm ${CONTAINER_NAME} || echo "No container to remove"
                     """
                 }
-            }
-        }
-
-        stage('Remove Old Image') {
-            steps {
-                script {
-                    echo 'Removing old Docker image...'
-                    bat """
-                        docker rmi ${IMAGE_NAME}:latest || echo "No image to remove"
-                    """
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                echo 'Building Docker image...'
-                bat """
-                    docker build -t ${IMAGE_NAME}:latest .
-                """
             }
         }
 
@@ -73,7 +73,7 @@ pipeline {
                       -p ${SIGNALING_PORT}:5001 ^
                       -v ${DATA_PATH}:/app/data ^
                       -v ${WORKSPACE_PATH}:/app/workspace ^
-                      ${IMAGE_NAME}:latest
+                      ${IMAGE_NAME}:${IMAGE_TAG}
                 """
             }
         }
