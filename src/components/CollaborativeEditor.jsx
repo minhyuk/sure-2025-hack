@@ -82,25 +82,57 @@ function CollaborativeEditor({
       setConnectedUsers(totalPeers)
       setIsRoomConnected(hasActivePeers)
 
-      console.log(`👥 ${editorType} peers changed:`, {
-        added,
-        removed,
-        webrtcPeers: webrtcPeers.length,
-        bcPeers: bcPeers.length,
-        totalConnected: totalPeers,
-        roomConnected: hasActivePeers
-      })
+      // Only log when there's an actual change (added or removed peers)
+      if (added.length > 0 || removed.length > 0) {
+        console.log(`👥 ${editorType} peers changed:`, {
+          added,
+          removed,
+          webrtcPeers: webrtcPeers.length,
+          bcPeers: bcPeers.length,
+          totalConnected: totalPeers,
+          roomConnected: hasActivePeers
+        })
+        
+        // Detailed peer connection status
+        if (added.length > 0) {
+          console.log(`  ✅ Peers added: ${added.length}`)
+        }
+        if (removed.length > 0) {
+          console.log(`  ❌ Peers removed: ${removed.length}`)
+          console.warn(`  ⚠️ WebRTC peer disconnected - possible causes:`)
+          console.warn(`     - Network timeout`)
+          console.warn(`     - NAT traversal failure`)
+          console.warn(`     - Signaling server issue`)
+        }
+      }
+    })
+    
+    // Add synced event listener
+    webrtcProvider.on('synced', ({ synced }) => {
+      console.log(`🔄 ${editorType} sync status: ${synced ? 'SYNCED' : 'NOT SYNCED'}`)
+    })
+    
+    // Add connection status listener
+    webrtcProvider.on('status', ({ status }) => {
+      console.log(`📶 ${editorType} provider status: ${status}`)
     })
 
     if (awareness) {
       awareness.on('update', () => {
         const states = awareness.getStates()
         setConnectedUsers(states.size)
-        console.log(`👤 ${editorType} awareness update - total users:`, states.size)
+        // Only log awareness updates when user count changes
+        // (awareness updates happen frequently for cursor positions)
       })
 
       awareness.on('change', ({ added, updated, removed }) => {
-        console.log(`👤 ${editorType} awareness changed:`, { added, updated, removed })
+        // Only log when users actually join/leave (not just cursor movement)
+        if (added.length > 0 || removed.length > 0) {
+          console.log(`👤 ${editorType} awareness changed:`, { 
+            added: added.length, 
+            removed: removed.length 
+          })
+        }
       })
     }
 
@@ -273,14 +305,19 @@ function CollaborativeEditor({
     return () => window.removeEventListener('error', handleError)
   }, [topicId, doc, editor, onReloadNeeded, editorType])
 
+  // Cleanup on unmount only (not when provider reference changes)
   useEffect(() => {
+    const currentProvider = provider
+    const currentIndexeddbProvider = indexeddbProviderRef.current
+    
     return () => {
-      provider.destroy()
-      if (indexeddbProviderRef.current) {
-        indexeddbProviderRef.current.destroy()
+      console.log(`🧹 Cleaning up ${editorType} providers on unmount`)
+      currentProvider.destroy()
+      if (currentIndexeddbProvider) {
+        currentIndexeddbProvider.destroy()
       }
     }
-  }, [provider])
+  }, []) // Empty deps = cleanup only on unmount
 
   const handleSave = async () => {
     if (!editor) {

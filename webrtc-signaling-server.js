@@ -40,6 +40,8 @@ wss.on('connection', (ws, req) => {
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message)
+      
+      console.log(`📨 Received message type: ${data.type}`, data.topics ? `topics: ${data.topics}` : '')
 
       // Handle y-webrtc signaling protocol
       if (data.type === 'subscribe') {
@@ -61,7 +63,7 @@ wss.on('connection', (ws, req) => {
 
           console.log(`✅ Client subscribed to room: ${roomName} (Total in room: ${room.size})`)
 
-          // Notify client of subscription success
+          // Notify client of subscription success (y-webrtc expects this)
           ws.send(JSON.stringify({
             type: 'subscribe',
             topics: [roomName]
@@ -71,29 +73,58 @@ wss.on('connection', (ws, req) => {
         }
       }
 
-      // Handle y-webrtc publish messages (signaling data)
-      if (data.type === 'publish' && ws.room) {
+      // Handle y-webrtc unsubscribe
+      if (data.type === 'unsubscribe') {
         const topics = data.topics || []
-        if (topics.length > 0 && topics[0] === ws.room) {
+        if (topics.length > 0 && ws.room) {
+          const room = getRoom(ws.room)
+          room.delete(ws)
+          console.log(`⛔ Client unsubscribed from room: ${ws.room}`)
+          ws.room = null
+        }
+        return
+      }
+
+      // Handle y-webrtc publish messages (signaling data: SDP, ICE candidates)
+      if (data.type === 'publish') {
+        const topics = data.topics || []
+        
+        // If not subscribed to a room yet, use first topic as room
+        if (!ws.room && topics.length > 0) {
+          ws.room = topics[0]
+          const room = getRoom(ws.room)
+          room.add(ws)
+          console.log(`✅ Auto-subscribed to room: ${ws.room} (via publish)`)
+        }
+        
+        if (ws.room && topics.includes(ws.room)) {
           const room = getRoom(ws.room)
           
+          console.log(`📡 Broadcasting signaling data to ${room.size - 1} peers in room: ${ws.room}`)
+          
           // Broadcast to all peers in the same room except sender
+          let sent = 0
           room.forEach(client => {
             if (client !== ws && client.readyState === WebSocket.OPEN) {
               client.send(JSON.stringify(data))
+              sent++
             }
           })
+          
+          console.log(`   ↳ Sent to ${sent} peers`)
         }
         return
       }
 
       // Handle ping/pong for y-webrtc
       if (data.type === 'ping') {
+        ws.isAlive = true  // Mark as alive when receiving y-webrtc ping
         ws.send(JSON.stringify({ type: 'pong' }))
         return
       }
 
       // Fallback: broadcast any other message to room
+      console.log(`🔄 Fallback broadcast for type: ${data.type}`)
       if (ws.room) {
         const room = getRoom(ws.room)
         room.forEach(client => {
@@ -104,7 +135,8 @@ wss.on('connection', (ws, req) => {
       }
 
     } catch (err) {
-      console.error('Error processing message:', err)
+      console.error('❌ Error processing message:', err)
+      console.error('   Message:', message.toString().substring(0, 200))
     }
   })
 
@@ -139,14 +171,22 @@ wss.on('connection', (ws, req) => {
 })
 
 // Heartbeat to detect broken connections
+// Note: y-webrtc uses JSON ping/pong, not WebSocket protocol ping/pong
 const heartbeat = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (ws.isAlive === false) {
-      console.log('Terminating inactive connection')
+      console.log('⚠️ Terminating inactive connection (no response in 30s)')
       return ws.terminate()
     }
     ws.isAlive = false
-    ws.ping()
+    
+    // Send both WebSocket ping AND y-webrtc JSON ping
+    ws.ping()  // WebSocket protocol ping
+    
+    // y-webrtc JSON ping (for clients that only handle JSON messages)
+    if (ws.readyState === 1) {  // OPEN
+      ws.send(JSON.stringify({ type: 'ping' }))
+    }
   })
 }, PING_INTERVAL)
 
