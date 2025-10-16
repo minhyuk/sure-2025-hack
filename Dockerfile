@@ -1,6 +1,10 @@
 # Multi-stage build for optimized production image
 FROM node:20-alpine AS builder
 
+# Build argument for Liveblocks API key
+ARG VITE_LIVEBLOCKS_PUBLIC_KEY
+ENV VITE_LIVEBLOCKS_PUBLIC_KEY=$VITE_LIVEBLOCKS_PUBLIC_KEY
+
 # Set working directory
 WORKDIR /app
 
@@ -14,7 +18,7 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Build the frontend
+# Build the frontend (environment variables are baked into the bundle)
 RUN npm run build
 
 # Production stage

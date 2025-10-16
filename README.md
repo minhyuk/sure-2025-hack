@@ -73,20 +73,42 @@ npm install
 
 ### 🐳 Docker로 실행 (권장)
 
-#### Windows에서 간편 배포
+#### Windows에서 로컬 빌드 및 실행
+
+1. **이미지 빌드** (.env 파일에서 API 키 읽어서 빌드)
+```batch
+build-docker.bat
+```
+
+2. **컨테이너 실행**
+```batch
+deploy-local.bat
+```
+
+#### GitHub Container Registry에서 실행 (사전 빌드된 이미지)
 ```batch
 deploy.bat
 ```
+⚠️ **주의**: GitHub Actions에서 빌드된 이미지는 VITE_LIVEBLOCKS_PUBLIC_KEY가 이미 포함되어 있어야 합니다.
 
-#### Linux/Mac에서 실행
+#### Linux/Mac에서 로컬 빌드
 ```bash
-docker build -t sure-hackathon .
+# .env 파일 로드
+source .env
+
+# 이미지 빌드
+docker build \
+  --build-arg VITE_LIVEBLOCKS_PUBLIC_KEY=$VITE_LIVEBLOCKS_PUBLIC_KEY \
+  -t sure-hackathon:local \
+  .
+
+# 컨테이너 실행
 docker run -d \
   --name sure-hackathon-app \
   -p 3000:3000 \
   -v $(pwd)/data:/app/data \
   -v $(pwd)/workspace:/app/workspace \
-  sure-hackathon
+  sure-hackathon:local
 ```
 
 #### 브라우저에서 접속
