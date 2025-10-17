@@ -4,11 +4,15 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 const { parse } = require('csv-parse/sync');
 const path = require('path');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DB_PATH = process.env.DB_PATH || './hackathon.db';
 const WORKSPACE_DIR = path.join(__dirname, 'workspace');
+const JWT_SECRET = process.env.JWT_SECRET || 'sure-hackerton-2025-secret-key-change-in-production';
+const SALT_ROUNDS = 10;
 
 // Middleware
 app.use(bodyParser.json());
@@ -43,8 +47,104 @@ function initDatabase() {
       id INTEGER PRIMARY KEY,
       title TEXT NOT NULL,
       description TEXT NOT NULL,
+      requirements TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
+
+    // ============================================
+    // 사용자 & 팀 관리
+    // ============================================
+
+    // Users table
+    db.run(`CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      avatar_url TEXT,
+      role TEXT DEFAULT 'participant',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Teams table
+    db.run(`CREATE TABLE IF NOT EXISTS teams (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      topic_id INTEGER NOT NULL,
+      color TEXT DEFAULT '#3B82F6',
+      current_stage INTEGER DEFAULT 1,
+      status TEXT DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (topic_id) REFERENCES topics(id)
+    )`);
+
+    // Team members table
+    db.run(`CREATE TABLE IF NOT EXISTS team_members (
+      team_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      role TEXT DEFAULT 'member',
+      joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (team_id, user_id),
+      FOREIGN KEY (team_id) REFERENCES teams(id),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )`);
+
+    // Team stages (진행 단계 기록)
+    db.run(`CREATE TABLE IF NOT EXISTS team_stages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      team_id INTEGER NOT NULL,
+      stage_number INTEGER NOT NULL,
+      stage_name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      file_path TEXT,
+      file_url TEXT,
+      completed_by INTEGER NOT NULL,
+      completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (team_id) REFERENCES teams(id),
+      FOREIGN KEY (completed_by) REFERENCES users(id)
+    )`);
+
+    // ============================================
+    // 해커톤 설정
+    // ============================================
+
+    // Hackathon settings
+    db.run(`CREATE TABLE IF NOT EXISTS hackathon_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT UNIQUE NOT NULL,
+      value TEXT NOT NULL,
+      description TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // 기본 설정값 삽입
+    db.run(`INSERT OR IGNORE INTO hackathon_settings (key, value, description) VALUES
+      ('is_active', 'false', '해커톤 진행 중 여부'),
+      ('start_time', '', '해커톤 시작 시간 (ISO 8601)'),
+      ('end_time', '', '해커톤 종료 시간 (ISO 8601)'),
+      ('current_phase', 'kickoff', '현재 단계: kickoff, development, presentation, judging'),
+      ('phase_end_time', '', '현재 단계 종료 시간'),
+      ('monitor_enabled', 'true', '전체 화면 대시보드 활성화')`);
+
+    // ============================================
+    // 응원 시스템
+    // ============================================
+
+    // Cheers (응원 메시지)
+    db.run(`CREATE TABLE IF NOT EXISTS cheers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      team_id INTEGER,
+      author_name TEXT NOT NULL,
+      message TEXT NOT NULL,
+      type TEXT DEFAULT 'comment',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (team_id) REFERENCES teams(id)
+    )`);
+
+    // ============================================
+    // 기존 테이블 (호환성 유지)
+    // ============================================
 
     // Comments table
     db.run(`CREATE TABLE IF NOT EXISTS comments (
@@ -79,6 +179,18 @@ function initDatabase() {
       FOREIGN KEY (topic_id) REFERENCES topics(id)
     )`);
 
+    // ============================================
+    // 인덱스 생성
+    // ============================================
+
+    db.run(`CREATE INDEX IF NOT EXISTS idx_teams_topic ON teams(topic_id)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members(user_id)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_team_stages_team ON team_stages(team_id)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_cheers_created ON cheers(created_at DESC)`);
+
+    console.log('✅ Database tables initialized');
+
     // Load CSV data if topics table is empty
     db.get("SELECT COUNT(*) as count FROM topics", (err, row) => {
       if (row.count === 0) {
@@ -112,7 +224,296 @@ function loadTopicsFromCSV() {
   }
 }
 
+// ============================================
+// Utility Functions
+// ============================================
+
+// 팀 색상 랜덤 선택
+const TEAM_COLORS = [
+  '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
+  '#8B5CF6', '#06B6D4', '#EC4899', '#14B8A6',
+  '#F97316', '#84CC16', '#A855F7', '#0EA5E9'
+];
+
+function getRandomColor() {
+  return TEAM_COLORS[Math.floor(Math.random() * TEAM_COLORS.length)];
+}
+
+// ============================================
+// JWT Authentication Middleware
+// ============================================
+
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token' });
+    }
+    req.user = user; // { id, username, role, team_id }
+    next();
+  });
+}
+
+// Admin-only middleware
+function requireAdmin(req, res, next) {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+}
+
+// ============================================
 // API Routes
+// ============================================
+
+// ──────────────────────────────────────────
+// Authentication APIs
+// ──────────────────────────────────────────
+
+// Register
+app.post('/api/auth/register', async (req, res) => {
+  const { username, email, password, display_name, team_name, topic_id } = req.body;
+
+  // Validation
+  if (!username || !email || !password || !display_name || !team_name || !topic_id) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+
+  if (username.length < 3 || username.length > 20) {
+    return res.status(400).json({ error: 'Username must be 3-20 characters' });
+  }
+
+  if (password.length < 4) {
+    return res.status(400).json({ error: 'Password must be at least 4 characters' });
+  }
+
+  try {
+    // Check if username or email already exists
+    db.get("SELECT id FROM users WHERE username = ? OR email = ?", [username, email], async (err, existingUser) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (existingUser) {
+        return res.status(400).json({ error: 'Username or email already exists' });
+      }
+
+      // Hash password
+      const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+
+      // Insert user
+      db.run(
+        "INSERT INTO users (username, email, password_hash, display_name, role) VALUES (?, ?, ?, ?, ?)",
+        [username, email, password_hash, display_name, 'participant'],
+        function(err) {
+          if (err) {
+            return res.status(500).json({ error: 'Failed to create user' });
+          }
+
+          const userId = this.lastID;
+
+          // Find or create team
+          db.get(
+            "SELECT id FROM teams WHERE name = ? AND topic_id = ?",
+            [team_name, topic_id],
+            (err, existingTeam) => {
+              if (err) {
+                return res.status(500).json({ error: 'Database error' });
+              }
+
+              if (existingTeam) {
+                // Join existing team
+                const teamId = existingTeam.id;
+                db.run(
+                  "INSERT INTO team_members (team_id, user_id, role) VALUES (?, ?, ?)",
+                  [teamId, userId, 'member'],
+                  (err) => {
+                    if (err) {
+                      return res.status(500).json({ error: 'Failed to join team' });
+                    }
+
+                    // Generate JWT
+                    const token = jwt.sign(
+                      { id: userId, username, role: 'participant', team_id: teamId },
+                      JWT_SECRET,
+                      { expiresIn: '24h' }
+                    );
+
+                    res.json({
+                      token,
+                      user: {
+                        id: userId,
+                        username,
+                        display_name,
+                        email,
+                        role: 'participant',
+                        team_id: teamId,
+                        team_name
+                      }
+                    });
+                  }
+                );
+              } else {
+                // Create new team
+                const teamColor = getRandomColor();
+                db.run(
+                  "INSERT INTO teams (name, topic_id, color) VALUES (?, ?, ?)",
+                  [team_name, topic_id, teamColor],
+                  function(err) {
+                    if (err) {
+                      return res.status(500).json({ error: 'Failed to create team' });
+                    }
+
+                    const teamId = this.lastID;
+
+                    // Add user as team leader
+                    db.run(
+                      "INSERT INTO team_members (team_id, user_id, role) VALUES (?, ?, ?)",
+                      [teamId, userId, 'leader'],
+                      (err) => {
+                        if (err) {
+                          return res.status(500).json({ error: 'Failed to add to team' });
+                        }
+
+                        // Generate JWT
+                        const token = jwt.sign(
+                          { id: userId, username, role: 'participant', team_id: teamId },
+                          JWT_SECRET,
+                          { expiresIn: '24h' }
+                        );
+
+                        res.json({
+                          token,
+                          user: {
+                            id: userId,
+                            username,
+                            display_name,
+                            email,
+                            role: 'participant',
+                            team_id: teamId,
+                            team_name
+                          }
+                        });
+                      }
+                    );
+                  }
+                );
+              }
+            }
+          );
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Login
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password required' });
+  }
+
+  // Find user
+  db.get(
+    "SELECT * FROM users WHERE username = ? OR email = ?",
+    [username, username],
+    async (err, user) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (!user) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      // Verify password
+      const isValid = await bcrypt.compare(password, user.password_hash);
+      if (!isValid) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      // Get user's team
+      db.get(
+        `SELECT t.id, t.name
+         FROM teams t
+         INNER JOIN team_members tm ON t.id = tm.team_id
+         WHERE tm.user_id = ?`,
+        [user.id],
+        (err, team) => {
+          if (err) {
+            return res.status(500).json({ error: 'Database error' });
+          }
+
+          // Generate JWT
+          const token = jwt.sign(
+            {
+              id: user.id,
+              username: user.username,
+              role: user.role,
+              team_id: team?.id || null
+            },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+          );
+
+          res.json({
+            token,
+            user: {
+              id: user.id,
+              username: user.username,
+              display_name: user.display_name,
+              email: user.email,
+              role: user.role,
+              team_id: team?.id || null,
+              team_name: team?.name || null
+            }
+          });
+        }
+      );
+    }
+  );
+});
+
+// Get current user
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+  db.get("SELECT id, username, display_name, email, role FROM users WHERE id = ?", [req.user.id], (err, user) => {
+    if (err || !user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get user's team
+    db.get(
+      `SELECT t.id, t.name, t.topic_id, t.color, t.current_stage
+       FROM teams t
+       INNER JOIN team_members tm ON t.id = tm.team_id
+       WHERE tm.user_id = ?`,
+      [user.id],
+      (err, team) => {
+        res.json({
+          ...user,
+          team_id: team?.id || null,
+          team_name: team?.name || null,
+          team: team || null
+        });
+      }
+    );
+  });
+});
+
+// ──────────────────────────────────────────
+// Topics APIs
+// ──────────────────────────────────────────
 
 // Get all topics
 app.get('/api/topics', (req, res) => {
@@ -281,7 +682,132 @@ app.post('/api/topics/:id/content', (req, res) => {
   );
 });
 
+// ──────────────────────────────────────────
+// Dashboard APIs
+// ──────────────────────────────────────────
+
+// Get all teams with progress (for dashboard)
+app.get('/api/dashboard/teams', (req, res) => {
+  const query = `
+    SELECT
+      t.id,
+      t.name,
+      t.topic_id,
+      t.color,
+      t.current_stage,
+      t.status,
+      topics.title as topic_title,
+      (t.current_stage * 10) as progress_percentage,
+      COUNT(tm.user_id) as member_count
+    FROM teams t
+    LEFT JOIN topics ON t.topic_id = topics.id
+    LEFT JOIN team_members tm ON t.id = tm.team_id
+    WHERE t.status = 'active'
+    GROUP BY t.id
+    ORDER BY t.topic_id, t.name
+  `;
+
+  db.all(query, [], (err, teams) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    // Group teams by topic
+    const groupedByTopic = teams.reduce((acc, team) => {
+      if (!acc[team.topic_id]) {
+        acc[team.topic_id] = {
+          topic_id: team.topic_id,
+          topic_title: team.topic_title,
+          teams: []
+        };
+      }
+      acc[team.topic_id].teams.push(team);
+      return acc;
+    }, {});
+
+    res.json({
+      teams,
+      grouped: Object.values(groupedByTopic)
+    });
+  });
+});
+
+// Get hackathon settings
+app.get('/api/dashboard/settings', (req, res) => {
+  db.all("SELECT key, value, description FROM hackathon_settings", [], (err, settings) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    // Convert to key-value object
+    const settingsObj = settings.reduce((acc, setting) => {
+      acc[setting.key] = setting.value;
+      return acc;
+    }, {});
+
+    res.json(settingsObj);
+  });
+});
+
+// Get recent cheers
+app.get('/api/cheers/recent', (req, res) => {
+  const limit = req.query.limit || 20;
+
+  const query = `
+    SELECT
+      c.id,
+      c.team_id,
+      c.author_name,
+      c.message,
+      c.type,
+      c.created_at,
+      t.name as team_name,
+      t.color as team_color
+    FROM cheers c
+    LEFT JOIN teams t ON c.team_id = t.id
+    ORDER BY c.created_at DESC
+    LIMIT ?
+  `;
+
+  db.all(query, [limit], (err, cheers) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    res.json(cheers);
+  });
+});
+
+// Add cheer
+app.post('/api/cheers', (req, res) => {
+  const { team_id, author_name, message, type } = req.body;
+
+  if (!author_name || !message) {
+    return res.status(400).json({ error: 'Author name and message are required' });
+  }
+
+  db.run(
+    "INSERT INTO cheers (team_id, author_name, message, type) VALUES (?, ?, ?, ?)",
+    [team_id || null, author_name, message, type || 'comment'],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to add cheer' });
+      }
+
+      res.json({
+        id: this.lastID,
+        team_id,
+        author_name,
+        message,
+        type: type || 'comment',
+        created_at: new Date().toISOString()
+      });
+    }
+  );
+});
+
+// ──────────────────────────────────────────
 // Workspace API Routes - JSON 파일로 저장
+// ──────────────────────────────────────────
 
 // Get workspace data (주제 안내 & 정보 공유, 피드백, 아이디어)
 app.get('/api/workspace/:topicId', (req, res) => {
@@ -480,8 +1006,14 @@ async function setupVite() {
       logLevel: 'info'
     });
 
-    // Use vite's connect instance as middleware for non-API requests
-    app.use(vite.middlewares);
+    // Use vite's connect instance as middleware for non-API requests only
+    app.use((req, res, next) => {
+      // Skip Vite for API routes
+      if (req.url.startsWith('/api')) {
+        return next();
+      }
+      vite.middlewares(req, res, next);
+    });
 
     console.log('🎨 Vite dev server integrated as middleware');
   } else {

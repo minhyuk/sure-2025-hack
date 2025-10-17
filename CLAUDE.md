@@ -245,6 +245,122 @@ const saveContent = useCallback(() => {
 
 ---
 
+### 5. 모니터 대시보드 개선 (2025-10-17 추가)
+
+이번 세션에서 대시보드에 여러 UX/UI 개선 사항을 적용했습니다.
+
+#### 5.1 관리자 전체 삭제 기능
+
+**문제:**
+- LiveMap에는 `clear()` 메서드가 없음
+
+**해결:**
+```javascript
+// Mutation to clear all sticky notes (admin only)
+const clearAllStickyNotes = useMutation(({ storage }) => {
+  const notes = storage.get('stickyNotes')
+  // LiveMap doesn't have clear(), so delete all entries one by one
+  const allIds = Array.from(notes.keys())
+  allIds.forEach(id => notes.delete(id))
+}, [])
+```
+
+**UI:**
+- 관리자 전용 "전체삭제" 버튼 추가
+- 확인 다이얼로그로 실수 방지
+- 빨간색 테마로 경고성 강조
+
+#### 5.2 네비게이션 버튼 크기 축소
+
+**변경 전:**
+```css
+.nav-button {
+  padding: 12px 24px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 12px;
+}
+```
+
+**변경 후:**
+```css
+.nav-button {
+  padding: 8px 16px;          /* 축소 */
+  font-size: 0.75rem;          /* 축소 */
+  font-weight: 600;            /* design.md 기준 */
+  text-transform: none;        /* 대문자 제거 */
+  border-radius: 8px;          /* design.md 기준 */
+}
+```
+
+#### 5.3 팀 진행 현황 토글 기능
+
+**구현:**
+```javascript
+const [showTeamsPanel, setShowTeamsPanel] = useState(true)
+
+const toggleTeamsPanel = () => {
+  setShowTeamsPanel(!showTeamsPanel)
+}
+```
+
+**CSS:**
+```css
+.monitor-layout.full-width .postit-section-main {
+  flex: 1;
+  border-right: none;
+}
+```
+
+**기능:**
+- "👥 팀현황 숨김/보기" 버튼으로 토글
+- 숨기면 포스트잇 월이 전체 화면 사용
+- 부드러운 전환 애니메이션
+
+#### 5.4 포스트잇 색상 자동 배정
+
+**기존 방식:**
+- 사용자가 8가지 색상 중 선택
+- 같은 사람이 쓴 글인지 구분 어려움
+
+**개선 방식:**
+```javascript
+// Generate consistent color based on author name
+const getColorForAuthor = (name) => {
+  const colors = [
+    '#FFE66D', '#FF6B6B', '#4ECDC4', '#95E1D3',
+    '#F38181', '#AA96DA', '#FCBAD3', '#A8D8EA'
+  ]
+
+  // Simple hash function to get consistent index
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const index = Math.abs(hash) % colors.length
+  return colors[index]
+}
+```
+
+**장점:**
+- 같은 이름 = 같은 색상 (일관성)
+- 자동 배정으로 사용자 편의성 향상
+- 여러 사람의 포스트잇을 색상으로 쉽게 구분
+
+#### 5.5 소개 페이지 링크 추가
+
+**기능:**
+- 모니터 페이지에서 `/intro` 이동 버튼 추가
+- 해커톤 소개 페이지 접근성 향상
+
+**버튼 구조:**
+```
+[📖 소개] [👥 팀현황 토글] [📝 내 팀 페이지] [🚪 로그아웃]
+```
+
+---
+
 ## 파일 구조
 
 ```
@@ -323,5 +439,87 @@ server.js                           # Express API 서버
 
 ---
 
+## 게임화 요소 계획
+
+해커톤을 더 재미있고 몰입도 높게 만들기 위한 게임 요소들을 설계했습니다.
+
+### 핵심 아이디어
+
+1. **팀별 업적 시스템** - 특정 조건 달성 시 배지 획득
+   - 🚀 빠른 출발: 1시간 내 3단계 돌파
+   - 🏃 마라토너: 5단계 연속 완료
+   - ✨ 완벽주의자: 모든 산출물 완벽 제출
+   - 🎉 응원왕: 다른 팀 포스트잇 10개 이상
+   - ⭐ 인기팀: 응원 메시지 50개 이상 받기
+
+2. **실시간 리더보드** - 포인트 기반 순위 시스템
+   - 진행 단계 점수 (10단계 × 50점 = 500점)
+   - 업적 점수 (최대 500점)
+   - 응원 받은 횟수 (최대 100점)
+   - 시간 보너스 (빠른 완료 시 최대 200점)
+
+3. **마일스톤 배지**
+   - 🏅 Bronze: 3단계 완료
+   - 🥈 Silver: 6단계 완료
+   - 🥇 Gold: 9단계 완료
+   - 💎 Diamond: 10단계 + 모든 산출물
+
+4. **응원 반응 카운터**
+   - 팀별로 👍 🔥 ⭐ 💡 카운터
+   - 클릭 시 +1 애니메이션
+   - 응원 포인트로 환산
+
+5. **팀 레벨 시스템**
+   - Lv.1 신입 (0 pts)
+   - Lv.2 초보 (200 pts)
+   - Lv.3 중수 (500 pts)
+   - Lv.4 고수 (800 pts)
+   - Lv.5 전설 (1200 pts)
+
+### 구현 우선순위
+
+1. **1단계**: 응원 반응 카운터 (가장 간단, 즉시 효과)
+2. **2단계**: 포인트 시스템 + 리더보드
+3. **3단계**: 업적 시스템
+4. **4단계**: 마일스톤 배지 + 팀 레벨
+
+### DB 스키마 추가 필요
+
+```sql
+-- 업적 정의
+CREATE TABLE achievements (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  icon TEXT,
+  condition TEXT, -- JSON
+  points INTEGER DEFAULT 0
+);
+
+-- 팀별 획득 업적
+CREATE TABLE team_achievements (
+  id INTEGER PRIMARY KEY,
+  team_id INTEGER,
+  achievement_id INTEGER,
+  unlocked_at DATETIME,
+  unlocked_by INTEGER,
+  FOREIGN KEY (team_id) REFERENCES teams(id),
+  FOREIGN KEY (achievement_id) REFERENCES achievements(id),
+  FOREIGN KEY (unlocked_by) REFERENCES users(id)
+);
+
+-- 팀별 응원 카운터
+CREATE TABLE team_cheers (
+  id INTEGER PRIMARY KEY,
+  team_id INTEGER,
+  cheer_type TEXT, -- thumbs_up, fire, star, idea
+  count INTEGER DEFAULT 0,
+  FOREIGN KEY (team_id) REFERENCES teams(id)
+);
+```
+
+---
+
 **작성일:** 2025-10-17
 **작성자:** Claude Code (feat. Peter)
+**최종 업데이트:** 2025-10-17 (게임화 요소 추가)

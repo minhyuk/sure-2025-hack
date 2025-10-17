@@ -1,0 +1,126 @@
+/* Flying Emojis - YouTube Live Style */
+
+.flying-emojis-container {
+  position: fixed;
+  bottom: 0;
+  right: 300px;
+  left: 0;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+/* Emoji Picker Bar */
+.emoji-picker-bar {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  background: rgba(30, 41, 59, 0.95);
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  border-radius: 50px;
+  padding: 12px 20px;
+  pointer-events: all;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+}
+
+.emoji-button {
+  width: 48px;
+  height: 48px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.6);
+  cursor: pointer;
+  font-size: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.emoji-button:hover {
+  transform: scale(1.15);
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3B82F6;
+}
+
+.emoji-button.active {
+  border-color: #3B82F6;
+  background: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.emoji-button:active {
+  transform: scale(1.05);
+}
+
+/* Animation Area */
+.emoji-animation-area {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Flying Emoji */
+.flying-emoji {
+  position: absolute;
+  bottom: -50px;
+  font-size: 2.5rem;
+  animation: flyUp linear forwards;
+  opacity: 0;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes flyUp {
+  0% {
+    bottom: -50px;
+    opacity: 0;
+    transform: translateX(0) scale(0.5) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+    transform: translateX(0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translateX(20px) scale(1.1) rotate(10deg);
+  }
+  100% {
+    bottom: 100%;
+    opacity: 0;
+    transform: translateX(-20px) scale(0.8) rotate(-10deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .flying-emojis-container {
+    right: 0;
+    left: 0;
+  }
+
+  .emoji-picker-bar {
+    gap: 8px;
+    padding: 10px 16px;
+  }
+
+  .emoji-button {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+  }
+
+  .flying-emoji {
+    font-size: 2rem;
+  }
+}

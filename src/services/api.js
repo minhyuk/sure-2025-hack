@@ -60,8 +60,98 @@ async function fetchWithRetry(url, options = {}, retries = 5, delay = 1000) {
   throw lastError || new Error('Failed to fetch after retries')
 }
 
+// Get auth token from localStorage
+function getAuthToken() {
+  return localStorage.getItem('auth_token')
+}
+
+// Set auth token to localStorage
+function setAuthToken(token) {
+  localStorage.setItem('auth_token', token)
+}
+
+// Remove auth token from localStorage
+function removeAuthToken() {
+  localStorage.removeItem('auth_token')
+}
+
+// Get auth headers
+function getAuthHeaders() {
+  const token = getAuthToken()
+  return token ? { 'Authorization': `Bearer ${token}` } : {}
+}
+
 export const api = {
+  // ============================================
+  // Authentication
+  // ============================================
+
+  async register(username, email, password, displayName, teamName, topicId) {
+    const response = await fetchWithRetry(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username,
+        email,
+        password,
+        display_name: displayName,
+        team_name: teamName,
+        topic_id: topicId
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Registration failed')
+    }
+
+    const data = await response.json()
+    setAuthToken(data.token)
+    return data
+  },
+
+  async login(username, password) {
+    const response = await fetchWithRetry(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Login failed')
+    }
+
+    const data = await response.json()
+    setAuthToken(data.token)
+    return data
+  },
+
+  async getCurrentUser() {
+    const response = await fetchWithRetry(`${API_BASE}/auth/me`, {
+      headers: getAuthHeaders()
+    })
+
+    if (!response.ok) {
+      removeAuthToken()
+      return null
+    }
+
+    return response.json()
+  },
+
+  logout() {
+    removeAuthToken()
+  },
+
+  isAuthenticated() {
+    return !!getAuthToken()
+  },
+
+  // ============================================
   // Topics
+  // ============================================
+
   async getTopics() {
     const response = await fetchWithRetry(`${API_BASE}/topics`)
     return response.json()
@@ -72,7 +162,70 @@ export const api = {
     return response.json()
   },
 
+  // ============================================
+  // Dashboard
+  // ============================================
+
+  async getDashboardTeams() {
+    const response = await fetchWithRetry(`${API_BASE}/dashboard/teams`)
+
+    if (!response.ok) {
+      const text = await response.text()
+      console.error('Dashboard teams API error:', { status: response.status, body: text })
+      throw new Error(`Failed to fetch dashboard teams: ${response.status}`)
+    }
+
+    return response.json()
+  },
+
+  async getDashboardSettings() {
+    const response = await fetchWithRetry(`${API_BASE}/dashboard/settings`)
+
+    if (!response.ok) {
+      const text = await response.text()
+      console.error('Dashboard settings API error:', { status: response.status, body: text })
+      throw new Error(`Failed to fetch dashboard settings: ${response.status}`)
+    }
+
+    return response.json()
+  },
+
+  async getRecentCheers(limit = 20) {
+    const response = await fetchWithRetry(`${API_BASE}/cheers/recent?limit=${limit}`)
+
+    if (!response.ok) {
+      const text = await response.text()
+      console.error('Recent cheers API error:', { status: response.status, body: text })
+      throw new Error(`Failed to fetch recent cheers: ${response.status}`)
+    }
+
+    return response.json()
+  },
+
+  async addCheer(teamId, authorName, message, type = 'comment') {
+    const response = await fetchWithRetry(`${API_BASE}/cheers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team_id: teamId,
+        author_name: authorName,
+        message,
+        type
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to add cheer')
+    }
+
+    return response.json()
+  },
+
+  // ============================================
   // Workspace API
+  // ============================================
+
   async getWorkspace(topicId) {
     const url = `${API_BASE}/workspace/${topicId}`
     console.log(`🔍 Fetching workspace: ${url}`)

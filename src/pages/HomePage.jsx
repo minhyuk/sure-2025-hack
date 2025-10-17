@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../services/api'
 import '../styles/HomePage.css'
 
@@ -45,6 +45,22 @@ function HomePage() {
         <div className="subtitle">
           <p className="neon-text">AI VIBE CODING CHALLENGE 2025</p>
           <div className="tagline">혁신을 코딩하다 • 미래를 창조하다</div>
+        </div>
+        <div className="hero-buttons">
+          {api.isAuthenticated() ? (
+            <Link to="/" className="hero-btn hero-btn-primary">
+              대시보드로 이동
+            </Link>
+          ) : (
+            <>
+              <Link to="/login" className="hero-btn hero-btn-primary">
+                로그인
+              </Link>
+              <Link to="/register" className="hero-btn hero-btn-secondary">
+                회원가입
+              </Link>
+            </>
+          )}
         </div>
         <div className="hero-decoration">
           <div className="scan-line"></div>

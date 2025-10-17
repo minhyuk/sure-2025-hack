@@ -1,0 +1,339 @@
+/* Post-It Wall Styles */
+
+.postit-wall {
+  padding: 16px;
+  background: transparent;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.postit-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.postit-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #F1F5F9;
+  margin-bottom: 4px;
+}
+
+.postit-subtitle {
+  font-size: 0.75rem;
+  color: #94A3B8;
+}
+
+/* Add Note Form - Compact */
+.postit-form {
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.form-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 0;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.form-row:last-child {
+  margin-bottom: 0;
+}
+
+.author-input {
+  flex: 0 0 120px;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+  color: #F1F5F9;
+  font-size: 0.75rem;
+}
+
+.author-input:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.logged-in-name {
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+  border-radius: 6px;
+  color: #F1F5F9;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.logged-in-name::before {
+  content: '👤';
+  font-size: 0.875rem;
+}
+
+.color-picker {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.color-button {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.color-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.color-button.active {
+  border-color: white;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+  transform: scale(1.1);
+}
+
+.note-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+  color: #F1F5F9;
+  font-size: 0.75rem;
+  font-family: inherit;
+  resize: none;
+  height: 32px;
+}
+
+.note-input:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.submit-button {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.submit-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.submit-button:active {
+  transform: translateY(0);
+}
+
+.clear-all-button {
+  padding: 8px 16px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 2px solid #EF4444;
+  border-radius: 6px;
+  color: #F1F5F9;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.clear-all-button:hover {
+  transform: translateY(-1px);
+  background: rgba(239, 68, 68, 0.3);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+  border-color: #DC2626;
+}
+
+.clear-all-button:active {
+  transform: translateY(0);
+}
+
+/* Sticky Notes Container */
+.sticky-notes-container {
+  position: relative;
+  flex: 1;
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 12px;
+  padding: 40px;
+  overflow: auto;
+  min-height: 400px;
+}
+
+.no-notes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: #64748B;
+  font-size: 1rem;
+}
+
+/* Individual Sticky Note */
+.sticky-note {
+  position: absolute;
+  width: 200px;
+  min-height: 180px;
+  padding: 20px;
+  border-radius: 4px;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.1),
+    0 10px 15px rgba(0, 0, 0, 0.1);
+  transform: rotate(-2deg);
+  transition: all 0.3s ease;
+  cursor: default;
+  animation: fadeIn 0.5s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.sticky-note:nth-child(even) {
+  transform: rotate(2deg);
+}
+
+.sticky-note:nth-child(3n) {
+  transform: rotate(-1deg);
+}
+
+.sticky-note:hover {
+  transform: scale(1.05) rotate(0deg);
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.2),
+    0 15px 30px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8) rotate(0deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(-2deg);
+  }
+}
+
+.delete-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: rgba(239, 68, 68, 0.6);
+  color: white;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.delete-button:hover {
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  transform: scale(1.15);
+  opacity: 1;
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
+}
+
+.note-content {
+  flex: 1;
+  margin-bottom: 12px;
+}
+
+.note-text {
+  color: rgba(0, 0, 0, 0.85);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  word-wrap: break-word;
+  margin: 0;
+  font-weight: 500;
+}
+
+.note-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.note-author {
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.7);
+  font-weight: 600;
+  font-style: italic;
+}
+
+.note-time {
+  font-size: 0.625rem;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .postit-wall {
+    padding: 16px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .author-input {
+    flex: 1;
+    width: 100%;
+  }
+
+  .color-picker {
+    justify-content: center;
+  }
+
+  .sticky-notes-container {
+    min-height: 400px;
+    padding: 20px;
+  }
+
+  .sticky-note {
+    width: 160px;
+    min-height: 150px;
+    padding: 16px;
+  }
+
+  .note-text {
+    font-size: 0.75rem;
+  }
+}
