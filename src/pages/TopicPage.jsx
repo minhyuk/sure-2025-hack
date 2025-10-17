@@ -78,14 +78,17 @@ function TopicPage() {
     }
   }
 
-  const handleContentSave = async (content, updatedBy) => {
+  const handleContentSave = async (content) => {
     try {
-      await api.saveContent(id, content, updatedBy)
+      console.log('💾 [JSON Backup] Saving content...', content.length, 'blocks')
+      await api.saveContent(id, content, 'Anonymous')
+      console.log('✅ [JSON Backup] Saved successfully')
+
       // Reload workspace to get updated data
       const updatedWorkspace = await api.getWorkspace(id)
       setWorkspace(updatedWorkspace)
     } catch (error) {
-      console.error('Failed to save content:', error)
+      console.error('❌ [JSON Backup] Failed to save:', error)
     }
   }
 
