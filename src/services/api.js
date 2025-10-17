@@ -295,3 +295,145 @@ export const api = {
     return response.json()
   }
 }
+
+// ============================================
+// Admin API functions
+// ============================================
+
+export async function getHackathonSettings() {
+  const response = await fetchWithRetry(`${API_BASE}/dashboard/settings`)
+  if (!response.ok) throw new Error('Failed to fetch hackathon settings')
+  return response.json()
+}
+
+export async function updateHackathonSettings(settings) {
+  const response = await fetchWithRetry(`${API_BASE}/admin/settings`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(settings)
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error('Update settings error:', { status: response.status, body: errorText })
+    throw new Error(`Failed to update settings: ${response.status} - ${errorText}`)
+  }
+  return response.json()
+}
+
+// Announcements
+export async function getAnnouncements() {
+  const response = await fetchWithRetry(`${API_BASE}/announcements`)
+  if (!response.ok) throw new Error('Failed to fetch announcements')
+  return response.json()
+}
+
+export async function createAnnouncement(announcement) {
+  const response = await fetchWithRetry(`${API_BASE}/announcements`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(announcement)
+  })
+  if (!response.ok) throw new Error('Failed to create announcement')
+  return response.json()
+}
+
+export async function deleteAnnouncement(id) {
+  const response = await fetchWithRetry(`${API_BASE}/announcements/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  })
+  if (!response.ok) throw new Error('Failed to delete announcement')
+  return response.json()
+}
+
+// Teams
+export async function getTeams() {
+  const response = await fetchWithRetry(`${API_BASE}/admin/teams`, {
+    headers: getAuthHeaders()
+  })
+  if (!response.ok) throw new Error('Failed to fetch teams')
+  return response.json()
+}
+
+export async function createTeam(team) {
+  const response = await fetchWithRetry(`${API_BASE}/admin/teams`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(team)
+  })
+  if (!response.ok) throw new Error('Failed to create team')
+  return response.json()
+}
+
+export async function updateTeam(id, team) {
+  const response = await fetchWithRetry(`${API_BASE}/admin/teams/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(team)
+  })
+  if (!response.ok) throw new Error('Failed to update team')
+  return response.json()
+}
+
+export async function deleteTeam(id) {
+  const response = await fetchWithRetry(`${API_BASE}/admin/teams/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  })
+  if (!response.ok) throw new Error('Failed to delete team')
+  return response.json()
+}
+
+// Topics
+export async function getTopics() {
+  const response = await fetchWithRetry(`${API_BASE}/topics`)
+  if (!response.ok) throw new Error('Failed to fetch topics')
+  return response.json()
+}
+
+export async function createTopic(topic) {
+  const response = await fetchWithRetry(`${API_BASE}/admin/topics`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(topic)
+  })
+  if (!response.ok) throw new Error('Failed to create topic')
+  return response.json()
+}
+
+export async function updateTopic(id, topic) {
+  const response = await fetchWithRetry(`${API_BASE}/admin/topics/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(topic)
+  })
+  if (!response.ok) throw new Error('Failed to update topic')
+  return response.json()
+}
+
+export async function deleteTopic(id) {
+  const response = await fetchWithRetry(`${API_BASE}/admin/topics/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  })
+  if (!response.ok) throw new Error('Failed to delete topic')
+  return response.json()
+}

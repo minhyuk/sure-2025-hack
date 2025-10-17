@@ -120,12 +120,33 @@ function initDatabase() {
 
     // 기본 설정값 삽입
     db.run(`INSERT OR IGNORE INTO hackathon_settings (key, value, description) VALUES
-      ('is_active', 'false', '해커톤 진행 중 여부'),
+      ('status', 'preparing', '해커톤 상태: preparing(준비중), active(진행중), ended(종료)'),
       ('start_time', '', '해커톤 시작 시간 (ISO 8601)'),
       ('end_time', '', '해커톤 종료 시간 (ISO 8601)'),
-      ('current_phase', 'kickoff', '현재 단계: kickoff, development, presentation, judging'),
-      ('phase_end_time', '', '현재 단계 종료 시간'),
       ('monitor_enabled', 'true', '전체 화면 대시보드 활성화')`);
+
+    // 마이그레이션: is_active를 status로 변환
+    db.get("SELECT value FROM hackathon_settings WHERE key = 'is_active'", [], (err, row) => {
+      if (row && row.value) {
+        let statusValue = 'preparing';
+        if (row.value === 'true') {
+          statusValue = 'active';
+        } else if (row.value === 'ended') {
+          statusValue = 'ended';
+        } else if (row.value === 'false') {
+          statusValue = 'preparing';
+        }
+
+        db.run("INSERT OR REPLACE INTO hackathon_settings (key, value, description) VALUES (?, ?, ?)",
+          ['status', statusValue, '해커톤 상태: preparing(준비중), active(진행중), ended(종료)'],
+          () => {
+            console.log(`✅ Migrated is_active='${row.value}' to status='${statusValue}'`);
+            // 기존 is_active, current_phase, phase_end_time, current_stage 삭제
+            db.run("DELETE FROM hackathon_settings WHERE key IN ('is_active', 'current_phase', 'phase_end_time', 'current_stage')");
+          }
+        );
+      }
+    });
 
     // ============================================
     // 응원 시스템
@@ -140,6 +161,17 @@ function initDatabase() {
       type TEXT DEFAULT 'comment',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (team_id) REFERENCES teams(id)
+    )`);
+
+    // Announcements (공지사항)
+    db.run(`CREATE TABLE IF NOT EXISTS announcements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      priority TEXT DEFAULT 'normal',
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users(id)
     )`);
 
     // ============================================
@@ -317,6 +349,14 @@ app.post('/api/auth/register', async (req, res) => {
           }
 
           const userId = this.lastID;
+
+          // First user (id=1) is automatically admin
+          if (userId === 1) {
+            db.run("UPDATE users SET role = 'admin' WHERE id = ?", [userId], (err) => {
+              if (err) console.error('Failed to set admin role:', err);
+              else console.log('🔐 First user (id=1) set as admin');
+            });
+          }
 
           // Find or create team
           db.get(
@@ -994,6 +1034,356 @@ app.post('/api/workspace/:topicId/ideas/:ideaId/vote', (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Failed to update vote' });
   }
+});
+
+// ──────────────────────────────────────────
+// Admin API Routes
+// ──────────────────────────────────────────
+
+// Update hackathon settings (admin only)
+app.put('/api/admin/settings', authenticateToken, requireAdmin, (req, res) => {
+  const settings = req.body;
+
+  // Update each setting
+  const keys = Object.keys(settings);
+
+  if (keys.length === 0) {
+    return res.status(400).json({ error: 'No settings to update' });
+  }
+
+  let completed = 0;
+  let hasError = false;
+
+  keys.forEach(key => {
+    db.run(
+      "UPDATE hackathon_settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?",
+      [settings[key], key],
+      (err) => {
+        if (err) {
+          console.error(`Failed to update setting ${key}:`, err);
+          if (!hasError) {
+            hasError = true;
+            return res.status(500).json({ error: `Failed to update setting ${key}` });
+          }
+        }
+        completed++;
+
+        if (completed === keys.length && !hasError) {
+          res.json({ success: true, message: 'Settings updated successfully' });
+        }
+      }
+    );
+  });
+});
+
+// Get all announcements
+app.get('/api/announcements', (req, res) => {
+  db.all("SELECT * FROM announcements ORDER BY created_at DESC", [], (err, announcements) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    res.json(announcements);
+  });
+});
+
+// Create announcement (admin only)
+app.post('/api/announcements', authenticateToken, requireAdmin, (req, res) => {
+  const { title, content, priority } = req.body;
+
+  if (!title || !content) {
+    return res.status(400).json({ error: 'Title and content are required' });
+  }
+
+  db.run(
+    "INSERT INTO announcements (title, content, priority, created_by) VALUES (?, ?, ?, ?)",
+    [title, content, priority || 'normal', req.user.id],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to create announcement' });
+      }
+
+      res.json({
+        id: this.lastID,
+        title,
+        content,
+        priority: priority || 'normal',
+        created_at: new Date().toISOString()
+      });
+    }
+  );
+});
+
+// Delete announcement (admin only)
+app.delete('/api/announcements/:id', authenticateToken, requireAdmin, (req, res) => {
+  const announcementId = req.params.id;
+
+  db.run("DELETE FROM announcements WHERE id = ?", [announcementId], function(err) {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to delete announcement' });
+    }
+
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Announcement not found' });
+    }
+
+    res.json({ success: true, message: 'Announcement deleted' });
+  });
+});
+
+// Get all teams (admin only) - with member count
+app.get('/api/admin/teams', authenticateToken, requireAdmin, (req, res) => {
+  const query = `
+    SELECT
+      t.id,
+      t.name,
+      t.topic_id,
+      t.color,
+      t.current_stage,
+      t.status,
+      t.created_at,
+      COUNT(tm.user_id) as member_count
+    FROM teams t
+    LEFT JOIN team_members tm ON t.id = tm.team_id
+    GROUP BY t.id
+    ORDER BY t.created_at DESC
+  `;
+
+  db.all(query, [], (err, teams) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    res.json(teams);
+  });
+});
+
+// Create team (admin only)
+app.post('/api/admin/teams', authenticateToken, requireAdmin, (req, res) => {
+  const { name, topic_id, color, current_stage } = req.body;
+
+  if (!name || !topic_id) {
+    return res.status(400).json({ error: 'Name and topic_id are required' });
+  }
+
+  db.run(
+    "INSERT INTO teams (name, topic_id, color, current_stage) VALUES (?, ?, ?, ?)",
+    [name, topic_id, color || getRandomColor(), current_stage || 1],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to create team' });
+      }
+
+      res.json({
+        id: this.lastID,
+        name,
+        topic_id,
+        color,
+        current_stage: current_stage || 1,
+        created_at: new Date().toISOString()
+      });
+    }
+  );
+});
+
+// Update team (admin only)
+app.put('/api/admin/teams/:id', authenticateToken, requireAdmin, (req, res) => {
+  const teamId = req.params.id;
+  const { name, topic_id, color, current_stage, status } = req.body;
+
+  const updates = [];
+  const values = [];
+
+  if (name !== undefined) {
+    updates.push('name = ?');
+    values.push(name);
+  }
+  if (topic_id !== undefined) {
+    updates.push('topic_id = ?');
+    values.push(topic_id);
+  }
+  if (color !== undefined) {
+    updates.push('color = ?');
+    values.push(color);
+  }
+  if (current_stage !== undefined) {
+    updates.push('current_stage = ?');
+    values.push(current_stage);
+  }
+  if (status !== undefined) {
+    updates.push('status = ?');
+    values.push(status);
+  }
+
+  if (updates.length === 0) {
+    return res.status(400).json({ error: 'No fields to update' });
+  }
+
+  values.push(teamId);
+
+  db.run(
+    `UPDATE teams SET ${updates.join(', ')} WHERE id = ?`,
+    values,
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update team' });
+      }
+
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Team not found' });
+      }
+
+      res.json({ success: true, message: 'Team updated' });
+    }
+  );
+});
+
+// Delete team (admin only)
+app.delete('/api/admin/teams/:id', authenticateToken, requireAdmin, (req, res) => {
+  const teamId = req.params.id;
+
+  // Delete team members first (foreign key constraint)
+  db.run("DELETE FROM team_members WHERE team_id = ?", [teamId], (err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to delete team members' });
+    }
+
+    // Delete team stages
+    db.run("DELETE FROM team_stages WHERE team_id = ?", [teamId], (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to delete team stages' });
+      }
+
+      // Delete the team
+      db.run("DELETE FROM teams WHERE id = ?", [teamId], function(err) {
+        if (err) {
+          return res.status(500).json({ error: 'Failed to delete team' });
+        }
+
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'Team not found' });
+        }
+
+        res.json({ success: true, message: 'Team deleted' });
+      });
+    });
+  });
+});
+
+// Create topic (admin only)
+app.post('/api/admin/topics', authenticateToken, requireAdmin, (req, res) => {
+  const { id, title, description, requirements } = req.body;
+
+  if (!id || !title || !description) {
+    return res.status(400).json({ error: 'ID, title, and description are required' });
+  }
+
+  db.run(
+    "INSERT INTO topics (id, title, description, requirements) VALUES (?, ?, ?, ?)",
+    [id, title, description, requirements || ''],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to create topic (ID may already exist)' });
+      }
+
+      res.json({
+        id,
+        title,
+        description,
+        requirements,
+        created_at: new Date().toISOString()
+      });
+    }
+  );
+});
+
+// Update topic (admin only)
+app.put('/api/admin/topics/:id', authenticateToken, requireAdmin, (req, res) => {
+  const topicId = req.params.id;
+  const { title, description, requirements } = req.body;
+
+  const updates = [];
+  const values = [];
+
+  if (title !== undefined) {
+    updates.push('title = ?');
+    values.push(title);
+  }
+  if (description !== undefined) {
+    updates.push('description = ?');
+    values.push(description);
+  }
+  if (requirements !== undefined) {
+    updates.push('requirements = ?');
+    values.push(requirements);
+  }
+
+  if (updates.length === 0) {
+    return res.status(400).json({ error: 'No fields to update' });
+  }
+
+  values.push(topicId);
+
+  db.run(
+    `UPDATE topics SET ${updates.join(', ')} WHERE id = ?`,
+    values,
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update topic' });
+      }
+
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Topic not found' });
+      }
+
+      res.json({ success: true, message: 'Topic updated' });
+    }
+  );
+});
+
+// Delete topic (admin only)
+app.delete('/api/admin/topics/:id', authenticateToken, requireAdmin, (req, res) => {
+  const topicId = req.params.id;
+
+  // First, get all teams for this topic
+  db.all("SELECT id FROM teams WHERE topic_id = ?", [topicId], (err, teams) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    // Delete all related data for each team
+    const teamIds = teams.map(t => t.id);
+
+    if (teamIds.length > 0) {
+      const placeholders = teamIds.map(() => '?').join(',');
+
+      // Delete team members
+      db.run(`DELETE FROM team_members WHERE team_id IN (${placeholders})`, teamIds, (err) => {
+        if (err) console.error('Failed to delete team members:', err);
+      });
+
+      // Delete team stages
+      db.run(`DELETE FROM team_stages WHERE team_id IN (${placeholders})`, teamIds, (err) => {
+        if (err) console.error('Failed to delete team stages:', err);
+      });
+
+      // Delete teams
+      db.run(`DELETE FROM teams WHERE topic_id = ?`, [topicId], (err) => {
+        if (err) console.error('Failed to delete teams:', err);
+      });
+    }
+
+    // Delete the topic
+    db.run("DELETE FROM topics WHERE id = ?", [topicId], function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to delete topic' });
+      }
+
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Topic not found' });
+      }
+
+      res.json({ success: true, message: 'Topic and all related teams deleted' });
+    });
+  });
 });
 
 // Development: Vite dev server integration (AFTER all API routes)

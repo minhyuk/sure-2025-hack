@@ -361,14 +361,218 @@ const getColorForAuthor = (name) => {
 
 ---
 
+### 6. 타이머 시스템 개선 및 전체화면 시계 페이지 (2025-10-17 추가)
+
+이번 세션에서 타이머 UX를 크게 개선하고 전체화면 시계 페이지를 추가했습니다.
+
+#### 6.1 GlobalNav에 작은 타이머 추가
+
+**문제점:**
+- MonitorPage 헤더에만 큰 타이머가 있어서 다른 페이지에서는 시간 확인 불가
+- 타이머가 너무 커서 공간을 많이 차지함
+
+**해결:**
+```javascript
+// GlobalNav.jsx - 타이머 로직 추가
+const [settings, setSettings] = useState(null)
+const [timeRemaining, setTimeRemaining] = useState(null)
+const [timeUntilStart, setTimeUntilStart] = useState(null)
+
+// Timer countdown (active 상태)
+useEffect(() => {
+  if (!settings?.end_time || settings.status !== 'active') {
+    setTimeRemaining(null)
+    return
+  }
+  // ... 타이머 로직
+}, [settings])
+
+// D-day countdown (preparing 상태)
+useEffect(() => {
+  if (!settings?.start_time || settings.status !== 'preparing') {
+    setTimeUntilStart(null)
+    return
+  }
+  // ... D-day 로직
+}, [settings])
+```
+
+**UI 구현:**
+```jsx
+{/* Mini Timer in GlobalNav */}
+{(timeRemaining || timeUntilStart) && (
+  <div className="global-nav-timer">
+    {timeRemaining && (
+      <Link to="/clock" className="timer-mini">
+        <span className="timer-mini-label">{timeRemaining.ended ? '종료' : '남은 시간'}</span>
+        <span className="timer-mini-value">
+          {String(timeRemaining.hours).padStart(2, '0')}:
+          {String(timeRemaining.minutes).padStart(2, '0')}:
+          {String(timeRemaining.seconds).padStart(2, '0')}
+        </span>
+      </Link>
+    )}
+  </div>
+)}
+```
+
+**스타일:**
+- 작고 깔끔한 디자인 (Courier New 폰트 사용)
+- 클릭하면 전체화면 시계 페이지로 이동
+- 상태별 색상: 진행중(파란색), 준비중(주황색)
+
+#### 6.2 전체화면 시계 페이지 (ClockPage)
+
+**기능:**
+- 현재 시각 표시 (큰 디지털 시계)
+- 해커톤 타이머 (active 상태)
+- D-day 카운트다운 (preparing 상태)
+- 해커톤 종료 메시지 (ended 상태)
+
+**파일 구조:**
+```
+src/
+├── pages/
+│   └── ClockPage.jsx         # 전체화면 시계 페이지
+└── styles/
+    └── ClockPage.css          # 큰 타이머 스타일
+```
+
+**핵심 코드:**
+```javascript
+// ClockPage.jsx
+const [currentTime, setCurrentTime] = useState(new Date())
+
+// Current time update every second
+useEffect(() => {
+  const interval = setInterval(() => {
+    setCurrentTime(new Date())
+  }, 1000)
+  return () => clearInterval(interval)
+}, [])
+
+const formatCurrentTime = () => {
+  const hours = String(currentTime.getHours()).padStart(2, '0')
+  const minutes = String(currentTime.getMinutes()).padStart(2, '0')
+  const seconds = String(currentTime.getSeconds()).padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
+}
+```
+
+**디자인 특징:**
+- 전체화면 레이아웃
+- 6rem 크기의 큰 시계
+- 5rem 크기의 타이머 숫자
+- 반투명 카드 디자인
+- 반응형 레이아웃 (모바일 대응)
+
+#### 6.3 MonitorPage 헤더 타이머 제거
+
+**변경:**
+- MonitorPage에서 큰 타이머 섹션 완전히 제거
+- D-day 카운트다운, 상태 배지 모두 제거
+- GlobalNav의 작은 타이머로 대체
+
+**이유:**
+- 공간 절약
+- 일관된 UX (모든 페이지에서 GlobalNav 타이머로 확인 가능)
+- 필요시 /clock 페이지에서 큰 화면으로 확인
+
+#### 6.4 공지사항 즉시 표시
+
+**문제점:**
+- 공지사항 배너가 `RoomProvider`의 `Suspense` 안에 있어서 Liveblocks 로딩 시 표시 지연
+
+**해결:**
+```javascript
+// MonitorPage.jsx - 공지사항을 별도 컴포넌트로 분리
+function AnnouncementBanner({ announcements }) {
+  const [currentAnnouncementIndex, setCurrentAnnouncementIndex] = useState(0)
+
+  // Auto-slide every 5 seconds
+  useEffect(() => {
+    if (announcements.length <= 1) return
+    const interval = setInterval(() => {
+      setCurrentAnnouncementIndex((prev) => (prev + 1) % announcements.length)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [announcements.length])
+
+  // ... 렌더링
+}
+
+// RoomProvider 밖으로 이동
+return (
+  <div className="monitor-page">
+    <AnnouncementBanner announcements={announcements} />  {/* 즉시 표시 */}
+    <RoomProvider>
+      <Suspense>
+        <MonitorContent />  {/* Liveblocks 로딩 후 표시 */}
+      </Suspense>
+    </RoomProvider>
+  </div>
+)
+```
+
+**효과:**
+- 공지사항이 페이지 로드 즉시 표시됨
+- Liveblocks 연결 상태와 무관하게 작동
+
+#### 6.5 공지사항 새로고침 주기 단축
+
+**변경:**
+```javascript
+// Before: 30초마다 새로고침
+const interval = setInterval(loadDashboardData, 30000)
+
+// After: 10초마다 새로고침
+const interval = setInterval(loadDashboardData, 10000)
+```
+
+**효과:**
+- 관리자가 공지사항 추가 시 최대 10초 이내에 반영
+- 더 빠른 실시간 업데이트
+
+#### 6.6 GlobalNav에 "⏰ 시계" 메뉴 추가
+
+**추가 내용:**
+```jsx
+<Link to="/clock" className="global-nav-link">
+  ⏰ 시계
+</Link>
+```
+
+**라우트 추가:**
+```javascript
+// App.jsx
+<Route path="/clock" element={<ClockPage />} />
+```
+
+---
+
 ## 파일 구조
 
 ```
 src/
 ├── components/
-│   └── CollaborativeEditor.jsx    # Liveblocks + BlockNote 통합
+│   ├── CollaborativeEditor.jsx    # Liveblocks + BlockNote 통합
+│   ├── GlobalNav.jsx               # 전역 네비게이션 + 작은 타이머
+│   ├── FloatingComments.jsx        # 떠다니는 댓글
+│   ├── FlyingEmojis.jsx            # 날아다니는 이모지
+│   └── PostItWall.jsx              # 포스트잇 벽
 ├── pages/
-│   └── TopicPage.jsx               # 주제 상세 페이지 (onSave, initialContent 전달)
+│   ├── TopicPage.jsx               # 주제 상세 페이지 (onSave, initialContent 전달)
+│   ├── MonitorPage.jsx             # 대시보드 메인 페이지
+│   ├── ClockPage.jsx               # 전체화면 시계 페이지
+│   ├── HomePage.jsx                # 소개 페이지
+│   ├── LoginPage.jsx               # 로그인 페이지
+│   ├── RegisterPage.jsx            # 회원가입 페이지
+│   └── Admin*.jsx                  # 관리자 페이지들
+├── styles/
+│   ├── GlobalNav.css               # 전역 네비게이션 스타일
+│   ├── MonitorPage.css             # 대시보드 스타일
+│   ├── ClockPage.css               # 시계 페이지 스타일
+│   └── ...
 ├── services/
 │   └── api.js                      # API 통신 (saveContent, getWorkspace)
 └── App.jsx                         # LiveblocksProvider 최상위 배치
@@ -378,7 +582,10 @@ workspace/
 
 server.js                           # Express API 서버
 ├── GET  /api/workspace/:topicId    # JSON 파일 읽기
-└── POST /api/workspace/:topicId/content  # JSON 파일 쓰기
+├── POST /api/workspace/:topicId/content  # JSON 파일 쓰기
+├── GET  /api/announcements         # 공지사항 목록
+├── POST /api/announcements         # 공지사항 생성
+└── DELETE /api/announcements/:id   # 공지사항 삭제
 ```
 
 ---
@@ -522,4 +729,4 @@ CREATE TABLE team_cheers (
 
 **작성일:** 2025-10-17
 **작성자:** Claude Code (feat. Peter)
-**최종 업데이트:** 2025-10-17 (게임화 요소 추가)
+**최종 업데이트:** 2025-10-17 (타이머 시스템 개선 및 전체화면 시계 페이지 추가)

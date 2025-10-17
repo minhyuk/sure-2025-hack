@@ -1,7 +1,6 @@
 import React, { useState, useEffect, Suspense } from 'react'
 import { RoomProvider } from '@liveblocks/react/suspense'
 import { LiveMap } from '@liveblocks/client'
-import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import FloatingComments from '../components/FloatingComments'
 import PostItWall from '../components/PostItWall'
@@ -9,12 +8,13 @@ import FlyingEmojis from '../components/FlyingEmojis'
 import '../styles/MonitorPage.css'
 
 function MonitorPage() {
-  const navigate = useNavigate()
   const [teams, setTeams] = useState([])
   const [settings, setSettings] = useState(null)
+  const [announcements, setAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [timeRemaining, setTimeRemaining] = useState(null)
+  const [timeUntilStart, setTimeUntilStart] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
@@ -40,13 +40,17 @@ function MonitorPage() {
   // Load dashboard data
   useEffect(() => {
     loadDashboardData()
-    const interval = setInterval(loadDashboardData, 30000) // Refresh every 30s
+    const interval = setInterval(loadDashboardData, 10000) // Refresh every 10s
     return () => clearInterval(interval)
   }, [])
 
-  // Timer countdown
+  // Timer countdown (when hackathon is active)
   useEffect(() => {
-    if (!settings?.end_time) return
+    // Only show timer if hackathon is active and end_time is set
+    if (!settings?.end_time || settings.status !== 'active') {
+      setTimeRemaining(null)
+      return
+    }
 
     const updateTimer = () => {
       const now = Date.now()
@@ -68,11 +72,42 @@ function MonitorPage() {
     return () => clearInterval(interval)
   }, [settings])
 
+  // D-day countdown (when hackathon is preparing)
+  useEffect(() => {
+    // Only show D-day when hackathon is preparing and start_time is set
+    if (!settings?.start_time || settings.status !== 'preparing') {
+      setTimeUntilStart(null)
+      return
+    }
+
+    const updateDday = () => {
+      const now = Date.now()
+      const start = new Date(settings.start_time).getTime()
+      const remaining = start - now
+
+      if (remaining <= 0) {
+        // Start time has passed but hackathon not active yet
+        setTimeUntilStart({ days: 0, hours: 0, minutes: 0, seconds: 0, started: true })
+      } else {
+        const days = Math.floor(remaining / (1000 * 60 * 60 * 24))
+        const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))
+        const seconds = Math.floor((remaining % (1000 * 60)) / 1000)
+        setTimeUntilStart({ days, hours, minutes, seconds, started: false })
+      }
+    }
+
+    updateDday()
+    const interval = setInterval(updateDday, 1000)
+    return () => clearInterval(interval)
+  }, [settings])
+
   const loadDashboardData = async () => {
     try {
-      const [teamsResponse, settingsData] = await Promise.all([
+      const [teamsResponse, settingsData, announcementsData] = await Promise.all([
         api.getDashboardTeams(),
-        api.getDashboardSettings()
+        api.getDashboardSettings(),
+        fetch('/api/announcements').then(res => res.json()).catch(() => [])
       ])
 
       // Extract teams array from response object
@@ -80,6 +115,7 @@ function MonitorPage() {
 
       setTeams(teamsData)
       setSettings(settingsData)
+      setAnnouncements(announcementsData || [])
       setLoading(false)
     } catch (err) {
       console.error('Failed to load dashboard:', err)
@@ -128,153 +164,110 @@ function MonitorPage() {
   }
 
   return (
-    <RoomProvider
-      id="monitor-dashboard"
-      initialPresence={{}}
-      initialStorage={() => ({ stickyNotes: new LiveMap() })}
-    >
-      <Suspense fallback={
-        <div className="monitor-page">
-          <div className="loading-spinner">
-            <div className="spinner"></div>
-            <p>대시보드 로딩 중...</p>
+    <div className="monitor-page">
+      {/* Announcements Banner - Outside RoomProvider for instant display */}
+      <AnnouncementBanner announcements={announcements} />
+
+      <RoomProvider
+        id="monitor-dashboard"
+        initialPresence={{}}
+        initialStorage={() => ({ stickyNotes: new LiveMap() })}
+      >
+        <Suspense fallback={
+          <div className="monitor-page-content">
+            <div className="loading-spinner">
+              <div className="spinner"></div>
+              <p>대시보드 로딩 중...</p>
+            </div>
           </div>
-        </div>
-      }>
-        <MonitorContent
-          teams={teams}
-          settings={settings}
-          timeRemaining={timeRemaining}
-          getStageLabel={getStageLabel}
-          loadDashboardData={loadDashboardData}
-          isAuthenticated={isAuthenticated}
-          currentUser={currentUser}
-          navigate={navigate}
-        />
-      </Suspense>
-    </RoomProvider>
+        }>
+          <MonitorContent
+            teams={teams}
+            settings={settings}
+            timeRemaining={timeRemaining}
+            timeUntilStart={timeUntilStart}
+            getStageLabel={getStageLabel}
+            loadDashboardData={loadDashboardData}
+            isAuthenticated={isAuthenticated}
+            currentUser={currentUser}
+          />
+        </Suspense>
+      </RoomProvider>
+    </div>
   )
 }
 
-function MonitorContent({ teams, settings, timeRemaining, getStageLabel, loadDashboardData, isAuthenticated, currentUser, navigate }) {
-  const [showTeamsPanel, setShowTeamsPanel] = useState(true)
+function AnnouncementBanner({ announcements }) {
+  const [currentAnnouncementIndex, setCurrentAnnouncementIndex] = useState(0)
 
-  const handleNavigation = () => {
-    if (isAuthenticated && currentUser?.team?.topic_id) {
-      navigate(`/topic/${currentUser.team.topic_id}`)
-    } else if (!isAuthenticated) {
-      navigate('/login')
+  // Auto-slide announcements
+  useEffect(() => {
+    if (announcements.length <= 1) return
+
+    const interval = setInterval(() => {
+      setCurrentAnnouncementIndex((prev) => (prev + 1) % announcements.length)
+    }, 5000) // 5초마다 슬라이드
+
+    return () => clearInterval(interval)
+  }, [announcements.length])
+
+  // Reset index if it's out of bounds
+  useEffect(() => {
+    if (currentAnnouncementIndex >= announcements.length && announcements.length > 0) {
+      setCurrentAnnouncementIndex(0)
     }
-  }
+  }, [announcements.length, currentAnnouncementIndex])
 
-  const handleLogout = () => {
-    api.logout()
-    window.location.reload() // Reload to update auth state
-  }
+  // Get current announcement safely
+  const currentAnnouncement = announcements[currentAnnouncementIndex]
 
-  const toggleTeamsPanel = () => {
-    setShowTeamsPanel(!showTeamsPanel)
-  }
+  if (!currentAnnouncement) return null
 
   return (
-    <div className="monitor-page">
+    <div className={`announcement-banner announcement-${currentAnnouncement.priority}`}>
+      <div className="announcement-icon">
+        {currentAnnouncement.priority === 'urgent' ? '🚨' :
+         currentAnnouncement.priority === 'important' ? '⚠️' : '📢'}
+      </div>
+      <div className="announcement-content">
+        <span className="announcement-title">{currentAnnouncement.title}</span>
+        <span className="announcement-separator">•</span>
+        <span className="announcement-message">{currentAnnouncement.content}</span>
+      </div>
+      {announcements.length > 1 && (
+        <div className="announcement-indicator">
+          {announcements.map((_, index) => (
+            <div
+              key={index}
+              className={`announcement-dot ${index === currentAnnouncementIndex ? 'active' : ''}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MonitorContent({ teams, settings, timeRemaining, timeUntilStart, getStageLabel, loadDashboardData, isAuthenticated, currentUser }) {
+  return (
+    <div className="monitor-page-content">
       {/* Floating Comments Overlay */}
       <FloatingComments />
 
       {/* Flying Emojis (YouTube Style) - Inside RoomProvider for Liveblocks sync */}
       <FlyingEmojis />
 
-      {/* Header with Timer */}
-      <header className="monitor-header">
-        <div className="header-content">
-          <h1 className="hackathon-title">SURE HACKERTON 2025</h1>
-          <p className="hackathon-subtitle">AI VIBE CODING CHALLENGE</p>
-        </div>
-
-        {/* Navigation Buttons */}
-        <div className="nav-buttons">
-          <button
-            className="nav-button nav-button-primary"
-            onClick={() => navigate('/intro')}
-          >
-            📖 소개
-          </button>
-
-          <button
-            className="nav-button nav-button-primary"
-            onClick={toggleTeamsPanel}
-          >
-            {showTeamsPanel ? '👥 팀현황 숨김' : '👥 팀현황 보기'}
-          </button>
-
-          {isAuthenticated ? (
-            <>
-              <button
-                className="nav-button nav-button-primary"
-                onClick={handleNavigation}
-              >
-                📝 내 팀 페이지
-              </button>
-              <button
-                className="nav-button nav-button-logout"
-                onClick={handleLogout}
-              >
-                🚪 로그아웃
-              </button>
-            </>
-          ) : (
-            <button
-              className="nav-button nav-button-primary"
-              onClick={handleNavigation}
-            >
-              🔐 로그인
-            </button>
-          )}
-        </div>
-
-        {timeRemaining && (
-          <div className={`timer ${timeRemaining.ended ? 'ended' : ''}`}>
-            <div className="timer-label">
-              {timeRemaining.ended ? '해커톤 종료' : '남은 시간'}
-            </div>
-            <div className="timer-display">
-              <div className="time-unit">
-                <span className="time-value">{String(timeRemaining.hours).padStart(2, '0')}</span>
-                <span className="time-label">시간</span>
-              </div>
-              <span className="time-separator">:</span>
-              <div className="time-unit">
-                <span className="time-value">{String(timeRemaining.minutes).padStart(2, '0')}</span>
-                <span className="time-label">분</span>
-              </div>
-              <span className="time-separator">:</span>
-              <div className="time-unit">
-                <span className="time-value">{String(timeRemaining.seconds).padStart(2, '0')}</span>
-                <span className="time-label">초</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {settings?.current_stage && (
-          <div className="current-stage">
-            <span className="stage-label">현재 단계:</span>
-            <span className="stage-value">{getStageLabel(settings.current_stage)}</span>
-          </div>
-        )}
-      </header>
 
       {/* Main Content - Split Layout */}
       <main className="monitor-main">
-        <div className={`monitor-layout ${!showTeamsPanel ? 'full-width' : ''}`}>
+        <div className="monitor-layout">
           {/* Left Side - Post-It Wall */}
           <section className="postit-section-main">
             <PostItWall currentUser={currentUser} isAuthenticated={isAuthenticated} />
           </section>
 
-          {/* Right Side - Teams Grid (toggleable) */}
-          {showTeamsPanel && (
-            <section className="teams-section-mini">
+          {/* Right Side - Teams Grid */}
+          <section className="teams-section-mini">
               <h2 className="section-title-mini">팀 진행 현황</h2>
 
               {teams.length === 0 ? (
@@ -312,7 +305,6 @@ function MonitorContent({ teams, settings, timeRemaining, getStageLabel, loadDas
                 </div>
               )}
             </section>
-          )}
         </div>
       </main>
     </div>

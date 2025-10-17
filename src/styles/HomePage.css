@@ -291,6 +291,57 @@
     margin-top: 10px;
 }
 
+/* D-day Countdown in Stats */
+.stat-dday {
+    padding: 20px;
+    min-width: 300px;
+}
+
+.stat-dday-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.9rem;
+    color: #F59E0B;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 15px;
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+}
+
+.stat-dday-countdown {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+}
+
+.stat-dday-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: 2px solid rgba(245, 158, 11, 0.3);
+    min-width: 60px;
+}
+
+.stat-dday-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 2rem;
+    font-weight: 900;
+    color: #FCD34D;
+    text-shadow: 0 0 10px rgba(252, 211, 77, 0.6);
+    line-height: 1;
+}
+
+.stat-dday-text {
+    font-size: 0.7rem;
+    color: #F59E0B;
+    margin-top: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
 /* Topics Section */
 .topics-section {
     margin-bottom: 80px;

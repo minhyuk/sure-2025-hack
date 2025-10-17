@@ -5,23 +5,58 @@ import '../styles/HomePage.css'
 
 function HomePage() {
   const [topics, setTopics] = useState([])
+  const [settings, setSettings] = useState(null)
+  const [timeUntilStart, setTimeUntilStart] = useState(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
-    loadTopics()
+    loadData()
   }, [])
 
-  const loadTopics = async () => {
+  const loadData = async () => {
     try {
-      const data = await api.getTopics()
-      setTopics(data)
+      const [topicsData, settingsData] = await Promise.all([
+        api.getTopics(),
+        api.getDashboardSettings()
+      ])
+      setTopics(topicsData)
+      setSettings(settingsData)
     } catch (error) {
-      console.error('Failed to load topics:', error)
+      console.error('Failed to load data:', error)
     } finally {
       setLoading(false)
     }
   }
+
+  // D-day countdown (when hackathon is preparing)
+  useEffect(() => {
+    // Only show D-day when hackathon is preparing and start_time is set
+    if (!settings?.start_time || settings.status !== 'preparing') {
+      setTimeUntilStart(null)
+      return
+    }
+
+    const updateDday = () => {
+      const now = Date.now()
+      const start = new Date(settings.start_time).getTime()
+      const remaining = start - now
+
+      if (remaining <= 0) {
+        setTimeUntilStart({ days: 0, hours: 0, minutes: 0, seconds: 0, started: true })
+      } else {
+        const days = Math.floor(remaining / (1000 * 60 * 60 * 24))
+        const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))
+        const seconds = Math.floor((remaining % (1000 * 60)) / 1000)
+        setTimeUntilStart({ days, hours, minutes, seconds, started: false })
+      }
+    }
+
+    updateDday()
+    const interval = setInterval(updateDday, 1000)
+    return () => clearInterval(interval)
+  }, [settings])
 
   const handleTopicClick = (topicId) => {
     navigate(`/topic/${topicId}`)
@@ -73,10 +108,38 @@ function HomePage() {
           <div className="stat-number">{topics.length}</div>
           <div className="stat-label">주제</div>
         </div>
-        <div className="stat-item">
-          <div className="stat-number">LIVE</div>
-          <div className="stat-label">상태</div>
-        </div>
+        {timeUntilStart ? (
+          <div className="stat-item stat-dday">
+            <div className="stat-dday-label">{timeUntilStart.started ? 'END' : '시작까지'}</div>
+            <div className="stat-dday-countdown">
+              {timeUntilStart.days > 0 && (
+                <div className="stat-dday-unit">
+                  <span className="stat-dday-value">{timeUntilStart.days}</span>
+                  <span className="stat-dday-text">일</span>
+                </div>
+              )}
+              <div className="stat-dday-unit">
+                <span className="stat-dday-value">{String(timeUntilStart.hours).padStart(2, '0')}</span>
+                <span className="stat-dday-text">시간</span>
+              </div>
+              <div className="stat-dday-unit">
+                <span className="stat-dday-value">{String(timeUntilStart.minutes).padStart(2, '0')}</span>
+                <span className="stat-dday-text">분</span>
+              </div>
+              <div className="stat-dday-unit">
+                <span className="stat-dday-value">{String(timeUntilStart.seconds).padStart(2, '0')}</span>
+                <span className="stat-dday-text">초</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="stat-item">
+            <div className="stat-number">
+              {settings?.status === 'active' ? 'LIVE' : settings?.status === 'ended' ? 'END' : '준비중'}
+            </div>
+            <div className="stat-label">상태</div>
+          </div>
+        )}
         <div className="stat-item">
           <div className="stat-number">2025</div>
           <div className="stat-label">연도</div>
