@@ -9,12 +9,13 @@ import '@blocknote/mantine/style.css'
 import '../styles/NotionEditor.css'
 
 // Editor 컴포넌트 (Room 내부)
-function Editor({ onSave }) {
+function Editor({ onSave, initialContent }) {
   const room = useRoom()
   const self = useSelf()
   const others = useOthers()
-  const lastBlockCountRef = useRef(0)
-  const saveTimeoutRef = useRef(null)
+  const hasChangesRef = useRef(false)
+  const autoSaveIntervalRef = useRef(null)
+  const isInitializedRef = useRef(false)
 
   console.log('📝 Editor render:', {
     roomId: room.id,
@@ -45,43 +46,98 @@ function Editor({ onSave }) {
 
   console.log('✅ Editor created')
 
-  // 저장 함수 (debounced)
+  // 저장 함수 (즉시 실행)
   const saveContent = useCallback(() => {
     if (!editor || !onSave) return
 
-    // 기존 타이머 취소
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current)
-    }
-
-    // 500ms 후 저장 (짧은 debounce)
-    saveTimeoutRef.current = setTimeout(() => {
+    try {
       const content = editor.document
-      console.log('💾 Saving to JSON backup...', content.length, 'blocks')
-      onSave(content)
-    }, 500)
+      if (content && content.length > 0) {
+        console.log('💾 [JSON Backup] Saving to workspace...', content.length, 'blocks')
+        onSave(content)
+        hasChangesRef.current = false
+      }
+    } catch (error) {
+      console.error('❌ [JSON Backup] Failed to save:', error)
+    }
   }, [editor, onSave])
 
-  // 엔터 키 감지 (블럭 추가 시 저장)
-  const handleEditorChange = useCallback(() => {
+  // 초기 로딩: JSON에서 Liveblocks로 복원
+  React.useEffect(() => {
+    if (!editor || isInitializedRef.current) return
+
+    // Provider가 sync될 때까지 대기
+    setTimeout(() => {
+      try {
+        // Editor의 실제 document를 체크 (빈 paragraph 1개는 비어있는 것으로 간주)
+        const currentDoc = editor.document
+        const isEmpty = currentDoc.length === 1 &&
+                       currentDoc[0].content.length === 0 &&
+                       currentDoc[0].type === 'paragraph'
+
+        console.log('🔍 [Initial Load] Check:', {
+          docLength: currentDoc.length,
+          isEmpty,
+          hasInitialContent: !!initialContent?.blocks,
+          initialBlockCount: initialContent?.blocks?.length || 0
+        })
+
+        if (isEmpty && initialContent?.blocks && initialContent.blocks.length > 0) {
+          console.log('📥 [Initial Load] Loading from JSON to Liveblocks...', initialContent.blocks.length, 'blocks')
+
+          editor.replaceBlocks(editor.document, initialContent.blocks)
+          console.log('✅ [Initial Load] Content loaded successfully')
+        } else if (!isEmpty) {
+          console.log('ℹ️ [Initial Load] Liveblocks already has content, skipping JSON load')
+        } else {
+          console.log('ℹ️ [Initial Load] No initial content to load')
+        }
+
+        isInitializedRef.current = true
+      } catch (error) {
+        console.error('❌ [Initial Load] Failed to load content:', error)
+        isInitializedRef.current = true
+      }
+    }, 500) // Yjs 동기화 대기 시간 증가
+  }, [editor, initialContent])
+
+  // 변경 감지
+  React.useEffect(() => {
     if (!editor) return
 
-    const currentBlockCount = editor.document?.length || 0
-
-    // 블럭이 추가되었을 때 (엔터 키)
-    if (currentBlockCount > lastBlockCountRef.current) {
-      console.log('📝 New block added (Enter key), triggering save...')
-      saveContent()
+    const handleChange = () => {
+      hasChangesRef.current = true
     }
 
-    lastBlockCountRef.current = currentBlockCount
-  }, [editor, saveContent])
+    editor.onChange(handleChange)
+  }, [editor])
 
-  // 포커스를 잃을 때 저장
-  const handleBlur = useCallback(() => {
-    console.log('👋 Editor blur, triggering save...')
-    saveContent()
+  // 5분마다 자동 저장 (변경사항 있을 때만)
+  React.useEffect(() => {
+    autoSaveIntervalRef.current = setInterval(() => {
+      if (hasChangesRef.current) {
+        console.log('⏰ [Auto Save] 5-minute interval triggered')
+        saveContent()
+      }
+    }, 5 * 60 * 1000) // 5분
+
+    return () => {
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current)
+      }
+    }
   }, [saveContent])
+
+  // 마지막 사용자가 나갈 때 저장
+  React.useEffect(() => {
+    return () => {
+      // Cleanup: 내가 나갈 때 다른 사용자가 없으면 저장
+      if (others.length === 0 && hasChangesRef.current) {
+        console.log('👋 [Last User] Saving before exit...')
+        saveContent()
+      }
+    }
+  }, [others.length, saveContent])
 
   return (
     <div className="collaborative-editor">
@@ -95,11 +151,10 @@ function Editor({ onSave }) {
           </span>
         </div>
       </div>
-      <div className="editor-wrapper" onBlur={handleBlur}>
+      <div className="editor-wrapper">
         <BlockNoteView
           editor={editor}
           theme="dark"
-          onChange={handleEditorChange}
         />
       </div>
     </div>
@@ -117,7 +172,7 @@ function EditorLoading() {
 }
 
 // Main component
-export default function CollaborativeEditor({ topicId, onSave }) {
+export default function CollaborativeEditor({ topicId, onSave, initialContent }) {
   const roomId = `content-topic-${topicId}`
 
   console.log('🏠 CollaborativeEditor render, roomId:', roomId)
@@ -130,7 +185,7 @@ export default function CollaborativeEditor({ topicId, onSave }) {
       }}
     >
       <Suspense fallback={<EditorLoading />}>
-        <Editor onSave={onSave} />
+        <Editor onSave={onSave} initialContent={initialContent} />
       </Suspense>
     </RoomProvider>
   )

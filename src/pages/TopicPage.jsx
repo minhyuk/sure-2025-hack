@@ -151,6 +151,8 @@ function TopicPage() {
           <CollaborativeEditor
             key={`editor-${id}`}
             topicId={id}
+            onSave={handleContentSave}
+            initialContent={workspace?.content}
           />
         </div>
 

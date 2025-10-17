@@ -3,7 +3,7 @@
   "content": {
     "blocks": [
       {
-        "id": "e3773672-7b26-4ee2-a0fa-d6068ace5278",
+        "id": "ca81d918-56d9-4582-94d7-567aaf695f71",
         "type": "paragraph",
         "props": {
           "backgroundColor": "default",
@@ -13,14 +13,14 @@
         "content": [
           {
             "type": "text",
-            "text": "여기에 자유롭게 정보를 공유하세요",
+            "text": "잉?",
             "styles": {}
           }
         ],
         "children": []
       },
       {
-        "id": "f3c778c8-5228-46e8-9472-a53215dabf8f",
+        "id": "afb1a487-d530-4152-88bc-fd98d7832c99",
         "type": "paragraph",
         "props": {
           "backgroundColor": "default",
@@ -31,7 +31,7 @@
         "children": []
       },
       {
-        "id": "31adf037-3253-4ed1-8276-9c9940fe80ce",
+        "id": "634e37d6-db69-43c6-b874-e475aeca2abc",
         "type": "paragraph",
         "props": {
           "backgroundColor": "default",
@@ -41,14 +41,14 @@
         "content": [
           {
             "type": "text",
-            "text": "대화형",
+            "text": "what?",
             "styles": {}
           }
         ],
         "children": []
       },
       {
-        "id": "140be10d-8729-4e96-a0a8-36ae766b804f",
+        "id": "1fdfc87d-7e2f-4c0c-b8d0-ee72fb6e59f1",
         "type": "paragraph",
         "props": {
           "backgroundColor": "default",
@@ -59,7 +59,52 @@
         "children": []
       },
       {
-        "id": "f5516a8d-2a5e-43ed-aa45-802a1f946607",
+        "id": "f6f2ff74-e92d-4847-8378-9e68fda2c9c7",
+        "type": "paragraph",
+        "props": {
+          "backgroundColor": "default",
+          "textColor": "default",
+          "textAlignment": "left"
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "되네~",
+            "styles": {}
+          }
+        ],
+        "children": []
+      },
+      {
+        "id": "a01ba15a-5c81-4970-b054-5a4ad024d52b",
+        "type": "paragraph",
+        "props": {
+          "backgroundColor": "default",
+          "textColor": "default",
+          "textAlignment": "left"
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "오키~",
+            "styles": {}
+          }
+        ],
+        "children": []
+      },
+      {
+        "id": "fd3ff6d3-d661-4627-809c-29b5138195a3",
+        "type": "paragraph",
+        "props": {
+          "backgroundColor": "default",
+          "textColor": "default",
+          "textAlignment": "left"
+        },
+        "content": [],
+        "children": []
+      },
+      {
+        "id": "5d9582a8-c551-4037-86c0-0621833ce7d8",
         "type": "paragraph",
         "props": {
           "backgroundColor": "default",
@@ -71,9 +116,9 @@
       }
     ],
     "updated_by": "Anonymous",
-    "updated_at": "2025-10-16T07:10:36.950Z"
+    "updated_at": "2025-10-17T00:53:01.368Z"
   },
   "feedback": [],
   "ideas": [],
-  "lastUpdated": "2025-10-16T07:10:36.950Z"
+  "lastUpdated": "2025-10-17T00:53:01.368Z"
 }

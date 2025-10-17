@@ -15,7 +15,16 @@
       "Bash(python3:*)",
       "Bash(pkill:*)",
       "Bash(ip addr:*)",
-      "Bash(ss:*)"
+      "Bash(ss:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(npm run build)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix Liveblocks integration - use react-blocknote hook\n\n- Replace manual LiveblocksYjsProvider with useCreateBlockNoteWithLiveblocks\n- Remove manual Yjs document and provider management\n- Simplify editor initialization\n- Add missing Liveblocks packages (@liveblocks/react-blocknote, @liveblocks/react-ui)\n\nThis fixes the build error: \"LiveblocksProvider\" is not exported by \"@liveblocks/yjs\"\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix Liveblocks version conflict\n\nUpgrade all Liveblocks packages to 3.8.1 to resolve version conflict:\n- @liveblocks/client: 2.24.4 -> 3.8.1\n- @liveblocks/react: 2.24.4 -> 3.8.1\n- @liveblocks/yjs: 2.24.4 -> 3.8.1\n\nThis fixes the error: \"Multiple copies of Liveblocks are being loaded\"\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git rm:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nRewrite Liveblocks integration from scratch\n\nComplete rewrite for proper real-time collaboration:\n\nArchitecture changes:\n- Move LiveblocksProvider to App.jsx root level\n- Simplify CollaborativeEditor with clean room-based structure\n- Remove old liveblocks.config.js\n- Remove local JSON saving logic (Liveblocks handles everything)\n\nCollaborativeEditor improvements:\n- Use RoomProvider with content-topic-{id} pattern\n- Proper Suspense boundary for loading states\n- LiveblocksYjsProvider + BlockNote integration\n- Clean separation: Editor component inside Room\n\nUI/UX improvements:\n- Remove redundant sync messages\n- Full height editor (100vh)\n- Improved dark theme styling\n- Better connection status indicators\n\nThis fixes real-time sync issues and provides clean collaborative editing.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
