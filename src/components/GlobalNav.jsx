@@ -4,26 +4,50 @@ import { api } from '../services/api';
 import '../styles/GlobalNav.css';
 
 export default function GlobalNav() {
-  const [user, setUser] = useState(null);
+  const [nickname, setNickname] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [settings, setSettings] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [timeUntilStart, setTimeUntilStart] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadUser();
+    loadNickname();
+    checkAdminAuth();
     loadSettings();
+
+    // localStorage 변경 감지 (다른 컴포넌트에서 닉네임 변경 시)
+    const handleStorageChange = (e) => {
+      if (e.key === 'nickname') {
+        setNickname(e.newValue);
+      } else if (e.key === 'adminAuth') {
+        setIsAdmin(e.newValue === 'true');
+      }
+    };
+
+    // Custom event 리스너 (같은 페이지 내 변경 감지용)
+    const handleNicknameUpdate = () => {
+      loadNickname();
+      checkAdminAuth();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('nickname-updated', handleNicknameUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('nickname-updated', handleNicknameUpdate);
+    };
   }, []);
 
-  const loadUser = async () => {
-    if (api.isAuthenticated()) {
-      try {
-        const userData = await api.getCurrentUser();
-        setUser(userData);
-      } catch (error) {
-        console.error('Failed to load user:', error);
-      }
-    }
+  const loadNickname = () => {
+    const savedNickname = localStorage.getItem('nickname');
+    setNickname(savedNickname);
+  };
+
+  const checkAdminAuth = () => {
+    const adminAuth = localStorage.getItem('adminAuth');
+    setIsAdmin(adminAuth === 'true');
   };
 
   const loadSettings = async () => {
@@ -90,11 +114,19 @@ export default function GlobalNav() {
     return () => clearInterval(interval);
   }, [settings]);
 
-  const handleLogout = () => {
-    api.logout();
-    setUser(null);
+
+  const handleAdminLogout = () => {
+    localStorage.removeItem('adminAuth');
+    setIsAdmin(false);
     navigate('/');
-    window.location.reload(); // Refresh to update auth state
+  };
+
+  const handleChangeNickname = () => {
+    if (window.confirm('닉네임을 변경하고 다시 입장하시겠습니까?')) {
+      localStorage.removeItem('nickname');
+      navigate('/');
+      window.location.reload(); // 상태 초기화를 위해 새로고침
+    }
   };
 
   return (
@@ -133,38 +165,38 @@ export default function GlobalNav() {
       )}
 
       <div className="global-nav-right">
-        <Link to="/" className="global-nav-link">
+        <Link to="/monitor" className="global-nav-link">
           🖥️ 대시보드
-        </Link>
-        <Link to="/intro" className="global-nav-link">
-          📖 소개
         </Link>
         <Link to="/clock" className="global-nav-link">
           ⏰ 시계
         </Link>
 
-        {user ? (
+        {isAdmin ? (
           <>
-            {user.role === 'admin' && (
-              <Link to="/admin/settings" className="global-nav-link admin-link">
-                ⚙️ 관리자
-              </Link>
-            )}
-            <span className="global-nav-user">
-              👤 {user.display_name || user.username}
-            </span>
-            <button onClick={handleLogout} className="global-nav-btn">
+            <Link to="/admin/settings" className="global-nav-link admin-link">
+              ⚙️ 관리자
+            </Link>
+            <button onClick={handleAdminLogout} className="global-nav-btn">
               🚪 로그아웃
             </button>
           </>
         ) : (
           <>
-            <Link to="/login" className="global-nav-btn">
-              로그인
-            </Link>
-            <Link to="/register" className="global-nav-btn global-nav-btn-primary">
-              회원가입
-            </Link>
+            {nickname && (
+              <>
+                <span className="global-nav-user" title="닉네임 변경하려면 클릭">
+                  👤 {nickname}
+                </span>
+                <button
+                  onClick={handleChangeNickname}
+                  className="global-nav-btn global-nav-btn-change"
+                  title="닉네임 변경"
+                >
+                  🔄 재입장
+                </button>
+              </>
+            )}
           </>
         )}
       </div>

@@ -78,7 +78,20 @@ function removeAuthToken() {
 // Get auth headers
 function getAuthHeaders() {
   const token = getAuthToken()
-  return token ? { 'Authorization': `Bearer ${token}` } : {}
+  const headers = {}
+  
+  // JWT token (if available)
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  
+  // Simple admin authentication (if logged in as admin)
+  const isAdmin = localStorage.getItem('adminAuth') === 'true'
+  if (isAdmin) {
+    headers['X-Admin-Key'] = 'admin-claude-2025'
+  }
+  
+  return headers
 }
 
 export const api = {

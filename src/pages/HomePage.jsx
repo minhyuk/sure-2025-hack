@@ -1,37 +1,39 @@
-import React, { useEffect, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import '../styles/HomePage.css'
 
 function HomePage() {
-  const [topics, setTopics] = useState([])
+  const [nickname, setNickname] = useState('')
   const [settings, setSettings] = useState(null)
+  const [timeRemaining, setTimeRemaining] = useState(null)
   const [timeUntilStart, setTimeUntilStart] = useState(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
-    loadData()
-  }, [])
+    loadSettings()
+    
+    // 이미 닉네임이 저장되어 있으면 MonitorPage로 이동
+    const savedNickname = localStorage.getItem('nickname')
+    if (savedNickname) {
+      navigate('/monitor')
+    }
+  }, [navigate])
 
-  const loadData = async () => {
+  const loadSettings = async () => {
     try {
-      const [topicsData, settingsData] = await Promise.all([
-        api.getTopics(),
-        api.getDashboardSettings()
-      ])
-      setTopics(topicsData)
+      const settingsData = await api.getDashboardSettings()
       setSettings(settingsData)
     } catch (error) {
-      console.error('Failed to load data:', error)
+      console.error('Failed to load settings:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  // D-day countdown (when hackathon is preparing)
+  // D-day countdown (preparing 상태)
   useEffect(() => {
-    // Only show D-day when hackathon is preparing and start_time is set
     if (!settings?.start_time || settings.status !== 'preparing') {
       setTimeUntilStart(null)
       return
@@ -58,8 +60,49 @@ function HomePage() {
     return () => clearInterval(interval)
   }, [settings])
 
-  const handleTopicClick = (topicId) => {
-    navigate(`/topic/${topicId}`)
+  // Timer countdown (active 상태)
+  useEffect(() => {
+    if (!settings?.end_time || settings.status !== 'active') {
+      setTimeRemaining(null)
+      return
+    }
+
+    const updateTimer = () => {
+      const now = Date.now()
+      const end = new Date(settings.end_time).getTime()
+      const remaining = end - now
+
+      if (remaining <= 0) {
+        setTimeRemaining({ hours: 0, minutes: 0, seconds: 0, ended: true })
+      } else {
+        const hours = Math.floor(remaining / (1000 * 60 * 60))
+        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))
+        const seconds = Math.floor((remaining % (1000 * 60)) / 1000)
+        setTimeRemaining({ hours, minutes, seconds, ended: false })
+      }
+    }
+
+    updateTimer()
+    const interval = setInterval(updateTimer, 1000)
+    return () => clearInterval(interval)
+  }, [settings])
+
+  const handleEnter = (e) => {
+    e.preventDefault()
+
+    if (!nickname.trim()) {
+      alert('닉네임을 입력해주세요!')
+      return
+    }
+
+    // localStorage에 닉네임 저장
+    localStorage.setItem('nickname', nickname.trim())
+
+    // GlobalNav에 닉네임 업데이트 알림
+    window.dispatchEvent(new Event('nickname-updated'))
+
+    // MonitorPage로 이동
+    navigate('/monitor')
   }
 
   if (loading) {
@@ -72,113 +115,157 @@ function HomePage() {
   }
 
   return (
-    <div className="container home-page">
-      <header className="hero">
-        <div className="glitch-wrapper">
-          <h1 className="glitch" data-text="SURE HACKERTON">SURE HACKERTON</h1>
-        </div>
-        <div className="subtitle">
-          <p className="neon-text">AI VIBE CODING CHALLENGE 2025</p>
-          <div className="tagline">혁신을 코딩하다 • 미래를 창조하다</div>
-        </div>
-        <div className="hero-buttons">
-          {api.isAuthenticated() ? (
-            <Link to="/" className="hero-btn hero-btn-primary">
-              대시보드로 이동
-            </Link>
-          ) : (
-            <>
-              <Link to="/login" className="hero-btn hero-btn-primary">
-                로그인
-              </Link>
-              <Link to="/register" className="hero-btn hero-btn-secondary">
-                회원가입
-              </Link>
-            </>
-          )}
-        </div>
-        <div className="hero-decoration">
-          <div className="scan-line"></div>
-          <div className="grid-bg"></div>
-        </div>
-      </header>
+    <div className="home-page">
+      {/* Background Image */}
+      <div className="hero-background">
+        <img src="/sure.png" alt="SUKATHON" className="background-image" />
+      </div>
 
-      <section className="stats">
-        <div className="stat-item">
-          <div className="stat-number">{topics.length}</div>
-          <div className="stat-label">주제</div>
-        </div>
-        {timeUntilStart ? (
-          <div className="stat-item stat-dday">
-            <div className="stat-dday-label">{timeUntilStart.started ? 'END' : '시작까지'}</div>
-            <div className="stat-dday-countdown">
-              {timeUntilStart.days > 0 && (
-                <div className="stat-dday-unit">
-                  <span className="stat-dday-value">{timeUntilStart.days}</span>
-                  <span className="stat-dday-text">일</span>
+      {/* Floating Decorations */}
+      <div className="floating-decoration star" style={{ top: '10%', left: '10%', fontSize: '2rem' }}>⭐</div>
+      <div className="floating-decoration star" style={{ top: '20%', right: '15%', fontSize: '1.5rem' }}>✨</div>
+      <div className="floating-decoration star" style={{ bottom: '15%', left: '20%', fontSize: '2.5rem' }}>💫</div>
+      <div className="floating-decoration star" style={{ bottom: '25%', right: '10%', fontSize: '1.8rem' }}>🌟</div>
+
+      <div className="container">
+        {/* Hero Section */}
+        <section className="hero">
+          <div className="hero-layout">
+            {/* Left Side - Banner */}
+            <div className="hero-banner">
+              <h1 className="hero-title">SUKATHON</h1>
+              <p className="hero-subtitle">AI HACKATHON</p>
+              <p className="hero-tagline">INNOVATE · CODE · CREATE</p>
+
+              {/* Event Status Stats */}
+              <div className="hero-stats">
+              {timeUntilStart ? (
+                <div className="stat-card stat-dday">
+                  <div className="stat-icon">⏰</div>
+                  <div className="stat-content">
+                    <div className="stat-label">{timeUntilStart.started ? '종료' : '시작까지'}</div>
+                    <div className="stat-countdown">
+                      {timeUntilStart.days > 0 && (
+                        <div className="countdown-unit">
+                          <span className="countdown-value">{timeUntilStart.days}</span>
+                          <span className="countdown-text">일</span>
+                        </div>
+                      )}
+                      <div className="countdown-unit">
+                        <span className="countdown-value">{String(timeUntilStart.hours).padStart(2, '0')}</span>
+                        <span className="countdown-text">시간</span>
+                      </div>
+                      <div className="countdown-unit">
+                        <span className="countdown-value">{String(timeUntilStart.minutes).padStart(2, '0')}</span>
+                        <span className="countdown-text">분</span>
+                      </div>
+                      <div className="countdown-unit">
+                        <span className="countdown-value">{String(timeUntilStart.seconds).padStart(2, '0')}</span>
+                        <span className="countdown-text">초</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className={`stat-card stat-status ${settings?.status === 'active' ? 'status-active' : settings?.status === 'ended' ? 'status-ended' : 'status-preparing'}`}>
+                  <div className="stat-icon">
+                    {settings?.status === 'active' ? '🔴' : settings?.status === 'ended' ? '✅' : '⏳'}
+                  </div>
+                  <div className="stat-content">
+                    <div className="stat-value">
+                      {settings?.status === 'active' ? 'LIVE' : settings?.status === 'ended' ? '종료됨' : '준비중'}
+                    </div>
+                    <div className="stat-label">이벤트 상태</div>
+                  </div>
                 </div>
               )}
-              <div className="stat-dday-unit">
-                <span className="stat-dday-value">{String(timeUntilStart.hours).padStart(2, '0')}</span>
-                <span className="stat-dday-text">시간</span>
+              
+              <div className="stat-card">
+                <div className="stat-icon">📅</div>
+                <div className="stat-content">
+                  <div className="stat-value">2025</div>
+                  <div className="stat-label">HACKATHON</div>
+                </div>
               </div>
-              <div className="stat-dday-unit">
-                <span className="stat-dday-value">{String(timeUntilStart.minutes).padStart(2, '0')}</span>
-                <span className="stat-dday-text">분</span>
+            </div>
+            </div>
+
+            {/* Right Side - Entrance Form */}
+            <div className="hero-entrance">
+              {/* Timer Display */}
+              {timeRemaining && !timeRemaining.ended && (
+                <div className="hero-timer">
+                  <div className="timer-label">⏰ 남은 시간</div>
+                  <div className="timer-display">
+                    <div className="timer-unit">
+                      <span className="timer-value">{String(timeRemaining.hours).padStart(2, '0')}</span>
+                      <span className="timer-text">시간</span>
+                    </div>
+                    <span className="timer-colon">:</span>
+                    <div className="timer-unit">
+                      <span className="timer-value">{String(timeRemaining.minutes).padStart(2, '0')}</span>
+                      <span className="timer-text">분</span>
+                    </div>
+                    <span className="timer-colon">:</span>
+                    <div className="timer-unit">
+                      <span className="timer-value">{String(timeRemaining.seconds).padStart(2, '0')}</span>
+                      <span className="timer-text">초</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Nickname Input Form */}
+              <div className="card entrance-card">
+              <h2 className="entrance-title">👤 닉네임을 입력하고 입장하세요</h2>
+              <form onSubmit={handleEnter} className="entrance-form">
+                <input
+                  type="text"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  placeholder="닉네임을 입력하세요"
+                  className="nickname-input"
+                  maxLength={20}
+                />
+                <button type="submit" className="btn btn-primary">
+                  입장하기 →
+                </button>
+              </form>
+              <div className="entrance-info">
+                <p>💬 닉네임만 입력하면 바로 응원 활동에 참여할 수 있습니다!</p>
+                <p>📝 포스트잇을 붙이고, 댓글을 남기며 함께 해커톤 분위기를 즐겨보세요!</p>
               </div>
-              <div className="stat-dday-unit">
-                <span className="stat-dday-value">{String(timeUntilStart.seconds).padStart(2, '0')}</span>
-                <span className="stat-dday-text">초</span>
-              </div>
+            </div>
             </div>
           </div>
-        ) : (
-          <div className="stat-item">
-            <div className="stat-number">
-              {settings?.status === 'active' ? 'LIVE' : settings?.status === 'ended' ? 'END' : '준비중'}
+        </section>
+
+        {/* Info Section - Remove or keep minimal */}
+        <section className="info-section" style={{ display: 'none' }}>
+          <div className="grid">
+            <div className="card info-card">
+              <div className="icon-decoration">📅</div>
+              <h3>행사 일시</h3>
+              <p>2025년 깜짝 해커톤 이벤트</p>
             </div>
-            <div className="stat-label">상태</div>
+            <div className="card info-card">
+              <div className="icon-decoration">📍</div>
+              <h3>참여 방법</h3>
+              <p>닉네임만 입력하면 즉시 참여 가능</p>
+            </div>
+            <div className="card info-card">
+              <div className="icon-decoration">🎉</div>
+              <h3>이벤트 특징</h3>
+              <p>실시간 응원과 포스트잇으로 함께 즐기기</p>
+            </div>
           </div>
-        )}
-        <div className="stat-item">
-          <div className="stat-number">2025</div>
-          <div className="stat-label">연도</div>
-        </div>
-      </section>
+        </section>
+      </div>
 
-      <section className="topics-section">
-        <h2 className="section-title">
-          <span className="bracket">[</span>
-          해커톤 주제
-          <span className="bracket">]</span>
-        </h2>
-        <div className="topics-grid">
-          {topics.map((topic) => (
-            <div
-              key={topic.id}
-              className="topic-card"
-              onClick={() => handleTopicClick(topic.id)}
-            >
-              <div className="topic-number">{String(topic.id).padStart(2, '0')}</div>
-              <h3 className="topic-title">{topic.title}</h3>
-              <p className="topic-description">{topic.description}</p>
-              <div className="topic-footer">
-                <span className="topic-link">자세히 보기 →</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
+      {/* Footer */}
       <footer className="footer">
-        <div className="footer-content">
-          <p>© 2025 Sure Hackerton • AI Vibe Coding Challenge</p>
-          <div className="footer-decoration">
-            <span className="pulse-dot"></span>
-            <span className="footer-text">POWERED BY Peter(feat. Claude CODE)</span>
-            <span className="pulse-dot"></span>
-          </div>
-        </div>
+        <p>© 2025 SUKATHON • AI Hackathon Event</p>
+        <p className="footer-credit">POWERED BY Peter (feat. Claude CODE)</p>
       </footer>
     </div>
   )

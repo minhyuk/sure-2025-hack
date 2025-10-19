@@ -1,11 +1,31 @@
-/* Post-It Wall Styles */
-
+/* Post-It Wall View */
 .postit-wall {
-  padding: 16px;
-  background: transparent;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  height: calc(100vh - 160px);
+  min-height: 400px;
+  position: relative;
+  overflow: auto;
+  margin: 16px;
+}
+
+/* Glass reflection effect */
+.postit-wall::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  border-radius: 16px 16px 0 0;
+  pointer-events: none;
 }
 
 .postit-header {
@@ -27,11 +47,16 @@
 
 /* Add Note Form - Compact */
 .postit-form {
-  background: rgba(30, 41, 59, 0.9);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 10;
 }
 
 .form-row {
@@ -109,39 +134,45 @@
 
 .note-input {
   flex: 1;
-  padding: 8px 12px;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 6px;
-  color: #F1F5F9;
-  font-size: 0.75rem;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(5px);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  color: var(--dark-text);
+  font-size: 0.85rem;
   font-family: inherit;
+  font-weight: 500;
   resize: none;
-  height: 32px;
+  height: 36px;
 }
 
 .note-input:focus {
   outline: none;
-  border-color: #3B82F6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  border-color: var(--primary-cyan);
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 0 0 3px rgba(80, 201, 206, 0.2);
+  transform: scale(1.01);
 }
 
 .submit-button {
-  padding: 8px 16px;
-  background: linear-gradient(135deg, #3B82F6, #8B5CF6);
-  border: none;
-  border-radius: 6px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, var(--primary-cyan), var(--primary-blue));
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
   color: white;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.8rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
 }
 
 .submit-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(74, 144, 226, 0.5);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .submit-button:active {
@@ -152,35 +183,36 @@
   padding: 8px 16px;
   background: rgba(239, 68, 68, 0.2);
   border: 2px solid #EF4444;
-  border-radius: 6px;
+  border-radius: 8px;
   color: #F1F5F9;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.8rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
 
+.clear-all-button.admin-only {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  padding: 10px 18px;
+  background: rgba(239, 68, 68, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 .clear-all-button:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   background: rgba(239, 68, 68, 0.3);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
   border-color: #DC2626;
 }
 
 .clear-all-button:active {
   transform: translateY(0);
-}
-
-/* Sticky Notes Container */
-.sticky-notes-container {
-  position: relative;
-  flex: 1;
-  background: rgba(15, 23, 42, 0.3);
-  border-radius: 12px;
-  padding: 40px;
-  overflow: auto;
-  min-height: 400px;
 }
 
 .no-notes {
@@ -302,10 +334,157 @@
   color: rgba(0, 0, 0, 0.5);
 }
 
+/* Comment List View - YouTube Live Chat 스타일 */
+.comment-list {
+  padding: 20px 20px 40px;
+  height: calc(100vh - 220px);
+  min-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+
+  /* FloatingComponent와 동일한 크기 - 가운데 정렬 */
+  width: 90%;
+  max-width: 1000px;
+  margin: 16px auto;
+}
+
+.comment-item {
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  transition: background-color 0.2s ease;
+  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  animation: fadeIn 0.3s ease;
+}
+
+.comment-item:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Comment Avatar */
+.comment-avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  font-size: 1.2rem;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.comment-author {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--dark-text, #0F172A);
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.comment-text {
+  color: var(--dark-text, #0F172A);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  word-wrap: break-word;
+  margin: 0;
+  font-weight: 400;
+  flex: 1;
+}
+
+.delete-button-list {
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: rgba(148, 163, 184, 0.3);
+  color: var(--dark-text, #0F172A);
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.comment-item:hover .delete-button-list {
+  opacity: 1;
+}
+
+.delete-button-list:hover {
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  transform: scale(1.1);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .postit-wall {
-    padding: 16px;
+    padding: 10px;
+    height: calc(100vh - 100px);
+    background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  
+    min-height: 400px;
+  }
+
+  .comment-list {
+    padding: 70px 12px 20px;
+    gap: 2px;
+    width: 95%;
+    height: calc(100vh - 100px);
+  }
+
+  .comment-item {
+    padding: 6px 12px;
+    gap: 6px;
+  }
+
+  .comment-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 1rem;
+  }
+
+  .comment-author {
+    font-size: 0.8rem;
+  }
+
+  .comment-text {
+    font-size: 0.8rem;
+    line-height: 1.5;
   }
 
   .form-row {
@@ -322,11 +501,6 @@
     justify-content: center;
   }
 
-  .sticky-notes-container {
-    min-height: 400px;
-    padding: 20px;
-  }
-
   .sticky-note {
     width: 160px;
     min-height: 150px;
@@ -334,6 +508,13 @@
   }
 
   .note-text {
+    font-size: 0.75rem;
+  }
+
+  .clear-all-button.admin-only {
+    top: 12px;
+    right: 12px;
+    padding: 8px 14px;
     font-size: 0.75rem;
   }
 }

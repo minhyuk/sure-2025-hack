@@ -292,12 +292,42 @@ function authenticateToken(req, res, next) {
   });
 }
 
-// Admin-only middleware
+// Admin-only middleware (for JWT-based auth)
 function requireAdmin(req, res, next) {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();
+}
+
+// Simple admin authentication middleware (for hardcoded admin login)
+function authenticateSimpleAdmin(req, res, next) {
+  const adminKey = req.headers['x-admin-key'];
+  
+  // Check for hardcoded admin key
+  if (adminKey === 'admin-claude-2025') {
+    req.user = { id: 0, username: 'admin', role: 'admin', team_id: null };
+    return next();
+  }
+  
+  // Fallback to JWT authentication
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+  
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token' });
+    }
+    if (user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    req.user = user;
+    next();
+  });
 }
 
 // ============================================
@@ -1041,7 +1071,7 @@ app.post('/api/workspace/:topicId/ideas/:ideaId/vote', (req, res) => {
 // ──────────────────────────────────────────
 
 // Update hackathon settings (admin only)
-app.put('/api/admin/settings', authenticateToken, requireAdmin, (req, res) => {
+app.put('/api/admin/settings', authenticateSimpleAdmin, (req, res) => {
   const settings = req.body;
 
   // Update each setting
@@ -1087,7 +1117,7 @@ app.get('/api/announcements', (req, res) => {
 });
 
 // Create announcement (admin only)
-app.post('/api/announcements', authenticateToken, requireAdmin, (req, res) => {
+app.post('/api/announcements', authenticateSimpleAdmin, (req, res) => {
   const { title, content, priority } = req.body;
 
   if (!title || !content) {
@@ -1114,7 +1144,7 @@ app.post('/api/announcements', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // Delete announcement (admin only)
-app.delete('/api/announcements/:id', authenticateToken, requireAdmin, (req, res) => {
+app.delete('/api/announcements/:id', authenticateSimpleAdmin, (req, res) => {
   const announcementId = req.params.id;
 
   db.run("DELETE FROM announcements WHERE id = ?", [announcementId], function(err) {
@@ -1131,7 +1161,7 @@ app.delete('/api/announcements/:id', authenticateToken, requireAdmin, (req, res)
 });
 
 // Get all teams (admin only) - with member count
-app.get('/api/admin/teams', authenticateToken, requireAdmin, (req, res) => {
+app.get('/api/admin/teams', authenticateSimpleAdmin, (req, res) => {
   const query = `
     SELECT
       t.id,
@@ -1157,7 +1187,7 @@ app.get('/api/admin/teams', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // Create team (admin only)
-app.post('/api/admin/teams', authenticateToken, requireAdmin, (req, res) => {
+app.post('/api/admin/teams', authenticateSimpleAdmin, (req, res) => {
   const { name, topic_id, color, current_stage } = req.body;
 
   if (!name || !topic_id) {
@@ -1185,7 +1215,7 @@ app.post('/api/admin/teams', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // Update team (admin only)
-app.put('/api/admin/teams/:id', authenticateToken, requireAdmin, (req, res) => {
+app.put('/api/admin/teams/:id', authenticateSimpleAdmin, (req, res) => {
   const teamId = req.params.id;
   const { name, topic_id, color, current_stage, status } = req.body;
 
@@ -1237,7 +1267,7 @@ app.put('/api/admin/teams/:id', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // Delete team (admin only)
-app.delete('/api/admin/teams/:id', authenticateToken, requireAdmin, (req, res) => {
+app.delete('/api/admin/teams/:id', authenticateSimpleAdmin, (req, res) => {
   const teamId = req.params.id;
 
   // Delete team members first (foreign key constraint)
@@ -1269,7 +1299,7 @@ app.delete('/api/admin/teams/:id', authenticateToken, requireAdmin, (req, res) =
 });
 
 // Create topic (admin only)
-app.post('/api/admin/topics', authenticateToken, requireAdmin, (req, res) => {
+app.post('/api/admin/topics', authenticateSimpleAdmin, (req, res) => {
   const { id, title, description, requirements } = req.body;
 
   if (!id || !title || !description) {
@@ -1296,7 +1326,7 @@ app.post('/api/admin/topics', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // Update topic (admin only)
-app.put('/api/admin/topics/:id', authenticateToken, requireAdmin, (req, res) => {
+app.put('/api/admin/topics/:id', authenticateSimpleAdmin, (req, res) => {
   const topicId = req.params.id;
   const { title, description, requirements } = req.body;
 
@@ -1340,7 +1370,7 @@ app.put('/api/admin/topics/:id', authenticateToken, requireAdmin, (req, res) => 
 });
 
 // Delete topic (admin only)
-app.delete('/api/admin/topics/:id', authenticateToken, requireAdmin, (req, res) => {
+app.delete('/api/admin/topics/:id', authenticateSimpleAdmin, (req, res) => {
   const topicId = req.params.id;
 
   // First, get all teams for this topic

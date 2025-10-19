@@ -16,19 +16,18 @@
 ## 프로젝트 개요
 
 ### 🎯 목적
-해커톤 참가 팀들이 실시간으로 협업하고, 진행 상황을 공유하며, 서로 응원할 수 있는 인터랙티브 플랫폼
+깜짝 해커톤 이벤트! 누구나 닉네임만 입력하면 바로 참여할 수 있는 실시간 협업 플랫폼
 
 ### 🎮 핵심 가치
-- **실시간 협업**: 팀별 독립된 작업 공간에서 실시간 협업
-- **투명한 진행 상황**: 모든 팀의 진행률을 공개 대시보드에 표시
-- **상호 응원**: YouTube 스타일 댓글과 포스트잇으로 서로 응원
-- **단계적 진행**: 9단계 마일스톤 시스템으로 명확한 진행 관리
+- **간편한 참여**: 회원가입 없이 닉네임만 입력하면 바로 입장
+- **실시간 응원**: YouTube 스타일 댓글과 포스트잇으로 서로 응원
+- **투명한 진행 상황**: 실시간으로 모든 참가자의 활동을 공개 대시보드에 표시
+- **관리자 전용 설정**: admin 계정으로 이벤트 설정 관리 가능
 
 ### 👥 사용자 그룹
-1. **참가자 (Participant)**: 팀원, 작업 공간 사용
-2. **멘토 (Mentor)**: 피드백 제공, 모든 팀 열람 가능
-3. **관리자 (Admin)**: 전체 설정, 팀 관리, 해커톤 운영
-4. **비로그인 게스트**: 대시보드 열람만 가능
+1. **참가자 (Guest)**: 닉네임만 입력하고 MonitorPage에서 응원 활동 참여
+2. **관리자 (Admin)**: admin/claude 계정으로 이벤트 설정 관리 (팀 관리, 주제 관리, 공지사항 등)
+3. **팀 페이지**: 현재는 노출하지 않음 (향후 확장 가능성을 위해 코드는 유지)
 
 ---
 
@@ -68,28 +67,21 @@
 ### URL 구조
 
 ```
-공개:
-  /                          → 홈페이지 (주제 목록)
-  /monitor                   → 전체 화면 대시보드 (비로그인 가능)
+공개 (모든 사용자):
+  /                          → 홈페이지 (닉네임 입력)
+  /monitor                   → 전체 화면 대시보드 (응원 활동)
   /clock                     → 전체화면 시계 페이지
-  /login                     → 로그인
-  /register                  → 회원가입
 
-참가자:
-  /topic/:topicId            → 주제 상세 + 내 팀 정보
-  /topic/:topicId/team/:teamId → 팀 작업 공간 (에디터)
-  /my-team                   → 내 팀 대시보드
-
-멘토:
-  /teams                     → 전체 팀 목록
-  /team/:teamId/review       → 팀 작업 열람 + 피드백
-
-관리자:
-  /admin                     → 관리자 대시보드
+관리자 전용:
+  /admin                     → 관리자 대시보드 (설정 버튼 → admin/claude 로그인)
   /admin/settings            → 해커톤 설정 (타이머, 단계)
   /admin/teams               → 팀 관리
   /admin/topics              → 주제 관리
-  /admin/submissions         → 산출물 심사
+
+향후 확장용 (현재 노출 안 함):
+  /topic/:topicId            → 주제 상세 + 내 팀 정보
+  /topic/:topicId/team/:teamId → 팀 작업 공간 (에디터)
+  /my-team                   → 내 팀 대시보드
 ```
 
 ---
@@ -216,49 +208,48 @@ monitor_enabled   = 'true'
 
 ## 기능 명세
 
-### 1. 인증 시스템
+### 1. 간편 입장 시스템 (회원가입 없음)
 
-#### 회원가입
+#### 닉네임 입력 후 입장
 ```
+화면: HomePage (/)
+
 입력:
-- username (3-20자, 영문/숫자)
-- email (이메일 형식 검증)
-- password (최소 4자, 해시 저장)
-- display_name (표시 이름)
-- team_name (자유 입력)
-- topic_id (드롭다운 선택)
+- nickname (닉네임, 필수)
 
 처리:
-1. 입력 검증
-2. username, email 중복 체크
-3. 비밀번호 해시 (bcrypt)
-4. 같은 topic_id + team_name 조합이 있으면 기존 팀에 합류
-5. 없으면 새 팀 생성 (색상 랜덤 할당)
-6. team_members에 추가
-7. JWT 토큰 발급
+1. 닉네임 입력 확인 (빈 값 방지)
+2. localStorage에 닉네임 저장
+3. MonitorPage로 리다이렉트
 
 출력:
-- JWT 토큰
-- 사용자 정보 (id, username, role, team_id, team_name)
+- MonitorPage로 이동
 ```
 
-#### 로그인
+### 2. 관리자 인증 시스템
+
+#### 관리자 로그인
 ```
+화면: 설정 버튼 클릭 시 모달 표시
+
 입력:
-- username (또는 email)
-- password
+- username: "admin" (고정)
+- password: "claude" (고정)
 
 처리:
-1. 사용자 존재 여부 확인
-2. 비밀번호 검증 (bcrypt.compare)
-3. JWT 토큰 발급 (유효기간 24시간)
+1. 입력값 검증
+2. 하드코딩된 admin 계정과 비교
+3. 일치하면 관리자 페이지로 이동
+4. localStorage에 admin 세션 저장
 
 출력:
-- JWT 토큰
-- 사용자 정보
+- 성공: /admin 페이지로 이동
+- 실패: 에러 메시지 표시
 ```
 
-### 2. 팀 작업 공간
+### 3. 팀 작업 공간 (현재 노출 안 함, 향후 확장용)
+
+**참고**: 팀별 페이지 기능은 향후 확장을 위해 코드는 유지하되, 현재 이벤트에서는 노출하지 않습니다.
 
 #### 에디터 (Liveblocks + BlockNote)
 ```
@@ -314,155 +305,297 @@ Workspace 파일:
 4. 활동 피드에 알림 추가
 ```
 
-### 3. 모니터 대시보드 (/monitor)
+### 4. 모니터 대시보드 (/monitor)
+
+**변경사항**: 팀 진행 현황은 제거하고 응원 피드만 표시
 
 #### Layout 구성
 
 ```
 Header (고정)
 ├─ 해커톤 로고 + 타이틀
-├─ 남은 시간 (실시간 카운트다운)
-└─ 현재 단계 (킥오프/개발/발표/심사)
+├─ 공지사항 배너 (우선순위별 색상, 자동 슬라이드)
+└─ GlobalNav (모든 페이지 공통)
+    ├─ 작은 타이머 (클릭 시 /clock 이동)
+    └─ 설정 버튼 (관리자 로그인)
 
-Main Content (3칼럼)
-├─ 좌측: 주제별 팀 진행 현황 (60%)
-│   ├─ 주제 제목
-│   ├─ 팀 리스트
-│   │   ├─ 팀 이름
-│   │   ├─ 진행바 (10단계 기반)
-│   │   └─ 현재 단계 텍스트
-│   └─ 반복...
-│
-├─ 우측: 실시간 응원 피드 (40%)
-│   ├─ YouTube 스타일 흐르는 댓글
-│   │   └─ 오른쪽에서 왼쪽으로 흐름
-│   │
-│   └─ 포스트잇 월
-│       └─ 드래그 가능, 실시간 동기화
-│
-└─ 하단: 응원 입력창 (고정)
-    ├─ 텍스트 입력
-    ├─ 이모지 버튼 (💬 🔥 ⭐ 💡)
-    └─ 전송 버튼
+Main Content (전체 화면)
+└─ 실시간 응원 피드 (100%)
+    ├─ YouTube 스타일 흐르는 댓글
+    │   └─ 오른쪽에서 왼쪽으로 흐름
+    │
+    └─ 포스트잇 월
+        ├─ 작성자별 자동 색상 배정
+        ├─ 스마트 배치 (빈 공간 자동 찾기)
+        ├─ 100개 제한 (오래된 것 자동 삭제)
+        └─ 관리자 전체 삭제 기능
+
+하단: 응원 입력창 (고정)
+├─ 닉네임 표시
+├─ 텍스트 입력
+├─ 이모지 버튼 (💬 🔥 ⭐ 💡)
+└─ 전송 버튼
 ```
 
-#### 주제별 팀 진행 현황
+#### 주제별 팀 진행 현황 (제거됨)
 
-```html
-<div class="topic-section">
-  <h3>📌 Topic 01: AI 챗봇 개발</h3>
-
-  <div class="team-progress">
-    <div class="team-name">Team Alpha</div>
-    <div class="progress-bar">
-      <div class="progress-fill" style="width: 70%; background: #3B82F6;">
-        70%
-      </div>
-    </div>
-    <div class="current-stage">개발중 - 3단계 (7/10)</div>
-  </div>
-
-  <div class="team-progress">
-    <div class="team-name">Team Beta</div>
-    <div class="progress-bar">
-      <div class="progress-fill" style="width: 40%; background: #10B981;">
-        40%
-      </div>
-    </div>
-    <div class="current-stage">구현 시작 (4/10)</div>
-  </div>
-</div>
-```
+**참고**: 팀 진행 현황은 현재 이벤트에서 노출하지 않습니다. 
+향후 확장 시 다시 추가할 수 있도록 코드는 유지합니다.
 
 #### YouTube 스타일 흐르는 댓글
 
+**참고:** 현재는 FloatingComments.jsx 컴포넌트로 구현되어 있으며, 댓글보다는 응원 메시지 입력 UI로 사용됩니다.
+
+**구현 내용:**
+- 입력창: 닉네임 표시 + 텍스트 입력 + 전송 버튼
+- 이모지 버튼: 키보드 단축키 안내용 (실제 클릭 비활성화)
+- 포스트잇 월 / 댓글 리스트 뷰 토글
+
+#### Flying Emojis (실시간 이모지 애니메이션)
+
+**구현 방식:**
+- Liveblocks 브로드캐스트 이벤트로 실시간 동기화
+- 키보드 전용 모드 (숫자키 1-9, 0)
+- 이모지가 아래에서 위로 날아가는 애니메이션
+
+**핵심 로직:**
 ```javascript
-// 구현 방식
-setInterval(() => {
-  fetch('/api/cheers/recent')
-    .then(res => res.json())
-    .then(cheers => {
-      cheers.forEach(cheer => {
-        createFloatingComment(cheer)
-      })
-    })
-}, 3000) // 3초마다 새 댓글 가져오기
+// FlyingEmojis.jsx
+const emojiOptions = ['👍', '❤️', '🔥', '🎉', '👏', '💪', '✨', '🚀', '⭐', '💯']
 
-function createFloatingComment(cheer) {
-  const comment = document.createElement('div')
-  comment.className = 'floating-comment'
-  comment.textContent = cheer.message
-  comment.style.right = '-300px'
-  comment.style.top = Math.random() * 80 + '%'
+// 키보드 전용 (버튼 클릭 비활성화됨)
+useEffect(() => {
+  const handleKeyPress = (e) => {
+    // Input/textarea에서는 작동 안 함
+    if (e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.isContentEditable) {
+      return
+    }
 
-  container.appendChild(comment)
+    const key = e.key
+    let index = -1
+    if (key >= '1' && key <= '9') {
+      index = parseInt(key) - 1
+    } else if (key === '0') {
+      index = 9
+    }
 
-  // CSS 애니메이션으로 오른쪽에서 왼쪽으로 이동
-  setTimeout(() => {
-    comment.style.right = '100vw'
-  }, 100)
+    if (index >= 0 && index < emojiOptions.length) {
+      const emoji = emojiOptions[index]
+      const { left, duration } = addEmoji(emoji)
 
-  // 10초 후 제거
-  setTimeout(() => {
-    comment.remove()
-  }, 10000)
-}
+      // 브로드캐스트 (자기 자신은 무시)
+      broadcast({ type: 'EMOJI_SENT', emoji, left, duration })
+    }
+  }
+  window.addEventListener('keypress', handleKeyPress)
+}, [])
+
+// 브로드캐스트 수신 (자기가 보낸 건 무시)
+useEventListener(({ event, connectionId }) => {
+  if (event.type === 'EMOJI_SENT') {
+    if (self && connectionId === self.connectionId) {
+      return  // 자기 자신이 보낸 이벤트 무시
+    }
+    addEmoji(event.emoji, event.left, event.duration)
+  }
+})
 ```
 
+**CSS 애니메이션:**
 ```css
-.floating-comment {
+.flying-emoji {
   position: absolute;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 14px;
-  white-space: nowrap;
-  transition: right 10s linear;
-  pointer-events: none;
-  z-index: 100;
+  bottom: -50px;
+  font-size: 2.5rem;
+  animation: flyUp linear forwards;
+}
+
+@keyframes flyUp {
+  0% {
+    bottom: -50px;
+    opacity: 0;
+    transform: translateX(0) scale(0.5) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+    transform: translateX(0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translateX(20px) scale(1.1) rotate(10deg);
+  }
+  100% {
+    bottom: 100%;
+    opacity: 0;
+    transform: translateX(-20px) scale(0.8) rotate(-10deg);
+  }
 }
 ```
+
+**주의사항:**
+- 키보드 이벤트 리스너는 FlyingEmojis 컴포넌트에만 존재
+- FloatingComments의 이모지 버튼은 단축키 안내용 (pointer-events: none)
+- Input/textarea 입력 중에는 단축키 비활성화
+- 브로드캐스트 자기 수신 방지 (useSelf 훅 사용)
 
 #### 포스트잇 월 (Liveblocks Storage)
 
+**구현 방식:**
+- Liveblocks LiveMap으로 실시간 동기화
+- 작성자별 색상 자동 배정 (해시 함수 기반)
+- 스마트 배치 알고리즘 (빈 공간 자동 찾기)
+- 100개 제한 (오래된 것 자동 삭제)
+
+**Liveblocks Storage 구조:**
 ```javascript
-// Liveblocks Room: monitor-sticky-notes
-
-// Storage 구조
+// Room: monitor-sticky-notes (MonitorPage 전용)
 {
-  notes: LiveList<{
+  stickyNotes: LiveMap<string, {
     id: string
+    text: string
     author: string
-    content: string
-    color: string
-    x: number
-    y: number
-    createdAt: string
+    color: string        // 작성자별 자동 배정
+    timestamp: string
+    position: {
+      x: number  // 5-75% (스마트 배치)
+      y: number  // 5-60%
+    }
   }>
-}
-
-// 컴포넌트
-<RoomProvider id="monitor-sticky-notes">
-  <StickyNotesBoard />
-</RoomProvider>
-
-// 포스트잇 추가
-const addStickyNote = () => {
-  const notes = storage.get('notes')
-  notes.push({
-    id: generateId(),
-    author: currentUser || 'Anonymous',
-    content: inputValue,
-    color: selectedColor,
-    x: Math.random() * 80,
-    y: Math.random() * 80,
-    createdAt: new Date().toISOString()
-  })
 }
 ```
 
-### 4. 관리자 페이지
+**스마트 배치 알고리즘:**
+```javascript
+// FloatingComments.jsx - findEmptySpace()
+const findEmptySpace = (existingNotes) => {
+  const noteWidth = 15   // 포스트잇 너비 (%)
+  const noteHeight = 15  // 포스트잇 높이 (%)
+  const padding = 2      // 포스트잇 간 간격
+
+  // 여백 설정 (가장자리 여유 공간)
+  const marginX = 5  // 좌측 여백 5%
+  const maxX = 70    // 우측 최대 70% (15% 포스트잇 너비 고려)
+  const marginY = 5  // 상단 여백 5%
+  const maxY = 55    // 하단 최대 55% (입력창과 겹침 방지)
+
+  const attempts = []
+  // 3행 × 5열 그리드 생성
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 5; col++) {
+      attempts.push({
+        x: marginX + col * 14 + Math.random() * 5,
+        y: marginY + row * 18 + Math.random() * 6
+      })
+    }
+  }
+
+  // 충돌 없는 위치 찾기
+  for (const pos of attempts) {
+    let hasOverlap = false
+    for (const note of existingNotes) {
+      const dx = Math.abs(pos.x - note.position.x)
+      const dy = Math.abs(pos.y - note.position.y)
+      if (dx < (noteWidth + padding) && dy < (noteHeight + padding)) {
+        hasOverlap = true
+        break
+      }
+    }
+    if (!hasOverlap) return pos
+  }
+
+  // Fallback: 랜덤 위치 (안전 영역 내)
+  return {
+    x: marginX + Math.random() * maxX,  // 5-75%
+    y: marginY + Math.random() * maxY   // 5-60%
+  }
+}
+```
+
+**작성자별 색상 자동 배정:**
+```javascript
+// FloatingComments.jsx
+const getColorForAuthor = (name) => {
+  const colors = [
+    '#FFE66D', '#FF6B6B', '#4ECDC4', '#95E1D3',
+    '#F38181', '#AA96DA', '#FCBAD3', '#A8D8EA'
+  ]
+
+  // 이름 기반 해시 함수
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const index = Math.abs(hash) % colors.length
+  return colors[index]  // 같은 이름 = 같은 색상
+}
+```
+
+**포스트잇 추가 (Mutation):**
+```javascript
+const addStickyNote = useMutation(({ storage }, text, author, color) => {
+  const notes = storage.get('stickyNotes')
+  const newId = Date.now().toString()
+
+  const existingNotes = Array.from(notes.entries()).map(([id, note]) => note)
+  const position = findEmptySpace(existingNotes)
+
+  notes.set(newId, {
+    id: newId,
+    text,
+    author,
+    color: getColorForAuthor(author),  // 자동 색상 배정
+    timestamp: new Date().toISOString(),
+    position
+  })
+
+  // 100개 제한 (오래된 것 자동 삭제)
+  if (notes.size > 100) {
+    const allNotes = Array.from(notes.entries())
+      .map(([id, note]) => ({ id, timestamp: note.timestamp }))
+    allNotes.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+
+    const toDelete = notes.size - 100
+    for (let i = 0; i < toDelete; i++) {
+      notes.delete(allNotes[i].id)
+    }
+  }
+}, [])
+```
+
+**관리자 전체 삭제:**
+```javascript
+const clearAllStickyNotes = useMutation(({ storage }) => {
+  const notes = storage.get('stickyNotes')
+  // LiveMap에는 clear()가 없으므로 하나씩 삭제
+  const allIds = Array.from(notes.keys())
+  allIds.forEach(id => notes.delete(id))
+}, [])
+```
+
+**배치 규칙 요약:**
+
+| 항목 | 값 | 설명 |
+|------|------|------|
+| 좌측 여백 | 5% | 왼쪽 가장자리 여유 |
+| 우측 최대 | 70% | 포스트잇 너비 15% 고려 |
+| 상단 여백 | 5% | 위쪽 가장자리 여유 |
+| 하단 최대 | 55% | 입력창과 겹침 방지 |
+| 그리드 | 3행 × 5열 | 총 15개 슬롯 |
+| 랜덤 오프셋 | x: 0-5%, y: 0-6% | 자연스러운 배치 |
+
+### 5. 관리자 페이지
+
+#### 관리자 로그인
+```
+접근 방법:
+1. 모든 페이지에서 GlobalNav의 "설정" 버튼 클릭
+2. 모달 창에 로그인 정보 입력:
+   - Username: admin
+   - Password: claude
+3. 로그인 성공 시 /admin 페이지로 이동
+4. localStorage에 admin 세션 저장 (새로고침 시에도 유지)
+```
 
 #### 해커톤 설정 (/admin/settings)
 
@@ -539,7 +672,7 @@ const addStickyNote = () => {
 └─────────────────────────────────────────┘
 ```
 
-### 5. 추가 기능
+### 6. 추가 기능 (향후 확장용)
 
 #### 응원 카운터 (간단 버전)
 
@@ -566,36 +699,40 @@ team_cheers 테이블
 
 ### 홈페이지 (/)
 
+**변경사항**: 간편 입장 화면으로 변경
+
 ```
 ┌───────────────────────────────────────────────────┐
-│  SURE HACKERTON 2025                    [로그인]  │
-│  AI VIBE CODING CHALLENGE                         │
+│  🎉 SURE HACKERTON 2025                           │
+│  깜짝 해커톤 이벤트에 오신 것을 환영합니다!       │
 │                                                    │
 │  ⏱️ 해커톤 진행 중! 남은 시간: 3:42:15            │
-│  [전체 대시보드 보기 →]                           │
 ├───────────────────────────────────────────────────┤
 │                                                    │
-│  📋 해커톤 주제                                    │
+│  👤 닉네임을 입력하고 입장하세요                   │
 │                                                    │
-│  ┌──────────────────────┐  ┌──────────────────┐  │
-│  │ 01                   │  │ 02               │  │
-│  │ AI 챗봇 개발         │  │ 블록체인 투표    │  │
-│  │                      │  │                  │  │
-│  │ 자연어 처리를 활용..│  │ 탈중앙화 투표... │  │
-│  │                      │  │                  │  │
-│  │ 참여 팀: 3개         │  │ 참여 팀: 2개     │  │
-│  │ [자세히 보기 →]     │  │ [자세히 보기 →] │  │
-│  └──────────────────────┘  └──────────────────┘  │
+│  ┌─────────────────────────────────────────────┐ │
+│  │ [닉네임 입력]                                │ │
+│  └─────────────────────────────────────────────┘ │
 │                                                    │
-│  ┌──────────────────────┐                        │
-│  │ 03                   │                        │
-│  │ IoT 스마트홈         │                        │
-│  │ ...                  │                        │
-│  └──────────────────────┘                        │
+│  [입장하기 →]                                     │
+│                                                    │
+│  💬 닉네임만 입력하면 바로 응원 활동에 참여할 수  │
+│     있습니다!                                     │
+│                                                    │
+│  📝 포스트잇을 붙이고, 댓글을 남기며 함께 해커톤  │
+│     분위기를 즐겨보세요!                          │
+│                                                    │
 └───────────────────────────────────────────────────┘
+
+[입장하기] 버튼 클릭 시:
+→ localStorage에 닉네임 저장
+→ /monitor 페이지로 이동
 ```
 
-### 주제 페이지 (/topic/:id)
+### 주제 페이지 (/topic/:id) - 현재 노출 안 함
+
+**참고**: 이 페이지는 향후 확장을 위해 코드는 유지하되, 현재 이벤트에서는 노출하지 않습니다.
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -629,7 +766,9 @@ team_cheers 테이블
 └─────────────────────────────────────────────────┘
 ```
 
-### 팀 작업 공간 (/topic/:id/team/:teamId)
+### 팀 작업 공간 (/topic/:id/team/:teamId) - 현재 노출 안 함
+
+**참고**: 이 페이지는 향후 확장을 위해 코드는 유지하되, 현재 이벤트에서는 노출하지 않습니다.
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -690,36 +829,39 @@ team_cheers 테이블
 
 ### 모니터 대시보드 (/monitor)
 
+**변경사항**: 팀 진행 현황 제거, 응원 피드만 전체 화면 표시
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  🔥 SURE HACKERTON 2025 LIVE                                   │
-│  ⏱️ 남은 시간: 3:42:15          📍 현재 단계: 개발 중         │
-│  [F11로 전체화면]                                               │
+│  GlobalNav (모든 페이지 공통)                                    │
+│  🔥 SURE HACKERTON 2025    ⏰ 남은 시간: 3:42:15    [⚙️ 설정]  │
+├─────────────────────────────────────────────────────────────────┤
+│  📢 공지사항: 해커톤이 시작되었습니다! 많은 참여 부탁드려요~    │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  ┌─────────────────────────┐  ┌────────────────────────────┐  │
-│  │ 📊 팀별 진행 현황        │  │ 💬 실시간 응원              │  │
-│  │                          │  │                             │  │
-│  │ Topic 01: AI 챗봇       │  │ [흐르는 댓글들]            │  │
-│  │ ────────────────────    │  │ 🔥 Team A 화이팅! ─────→  │  │
-│  │ 🟦 Team Alpha           │  │ ⭐ 멋지다!! ──────────→   │  │
-│  │ ▓▓▓▓▓▓▓░░░ 70%         │  │ 💡 좋은 아이디어! ────→  │  │
-│  │ 현재: 개발중-3단계      │  │                             │  │
-│  │                          │  │ ─────────────────────      │  │
-│  │ 🟩 Team Beta            │  │                             │  │
-│  │ ▓▓▓▓░░░░░░ 40%         │  │ 📌 응원의 벽 (포스트잇)    │  │
-│  │ 현재: 구현 시작         │  │                             │  │
-│  │                          │  │ [노랑]  [파랑]  [핑크]    │  │
-│  │ Topic 02: 블록체인      │  │ 화이팅!  굿!    멋져요!   │  │
-│  │ ────────────────────    │  │                             │  │
-│  │ 🟨 Team Gamma           │  │ [초록]         [보라]     │  │
-│  │ ▓▓▓▓▓▓▓▓░░ 80%         │  │ 응원해요!      최고!      │  │
-│  │ 현재: 테스트            │  │                             │  │
-│  │                          │  │ [+ 포스트잇 추가]          │  │
-│  └─────────────────────────┘  └────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ 💬 실시간 응원 (전체 화면)                                │  │
+│  │                                                            │  │
+│  │ [흐르는 댓글들]                                           │  │
+│  │ 🔥 화이팅! ────────────────────────→                    │  │
+│  │ ⭐ 멋지다!! ──────────────────────→                     │  │
+│  │ 💡 좋은 아이디어! ────────────────→                     │  │
+│  │                                                            │  │
+│  │ ───────────────────────────────────────                  │  │
+│  │                                                            │  │
+│  │ 📌 응원의 벽 (포스트잇)                                   │  │
+│  │                                                            │  │
+│  │ [노랑]  [파랑]  [핑크]  [초록]  [보라]                  │  │
+│  │ 화이팅!  굿!    멋져요!  응원!   최고!                   │  │
+│  │                                                            │  │
+│  │ [민희]  [준호]  [수진]  [관리자]                         │  │
+│  │ 파이팅! 굿잡!   힘내요!  수고하세요!                     │  │
+│  │                                                            │  │
+│  │                      [+ 포스트잇 추가]                     │  │
+│  └──────────────────────────────────────────────────────────┘  │
 │                                                                  │
 ├─────────────────────────────────────────────────────────────────┤
-│ 💬 응원 메시지: [입력...]  [💬] [🔥] [⭐] [💡]  [전송]       │
+│ 👤 민희 │ 💬 응원 메시지: [입력...]  [💬] [🔥] [⭐] [💡] [전송]│
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -729,28 +871,23 @@ team_cheers 테이블
 
 ### 인증
 
+**변경사항**: 회원가입/로그인 API 제거, 관리자 인증만 유지
+
 ```
-POST /api/auth/register
+POST /api/admin/login
 Body: {
-  username: string
-  email: string
-  password: string
-  display_name: string
-  team_name: string
-  topic_id: number
+  username: "admin"
+  password: "claude"
 }
 Response: {
-  token: string
-  user: { id, username, role, team_id, team_name }
+  success: boolean
+  message: string
 }
 
-POST /api/auth/login
-Body: { username, password }
-Response: { token, user }
-
-GET /api/auth/me
-Headers: { Authorization: Bearer <token> }
-Response: { user }
+참고: 
+- 일반 사용자는 닉네임만 localStorage에 저장
+- 서버 인증 불필요 (간편 입장)
+- 관리자만 하드코딩된 계정으로 로그인
 ```
 
 ### 팀
@@ -1196,13 +1333,15 @@ h3: 1.5rem (24px), semibold, line-height 1.4
 - [x] 팀 자동 생성/배정 로직
 - [x] 기본 API 엔드포인트
 
-### Phase 2: 팀 작업 공간 🔄 진행중
+### Phase 2: 팀 작업 공간 ⏸️ 보류 (현재 노출 안 함)
 - [x] 라우팅 구조 (Protected Routes)
 - [x] 팀별 workspace JSON
 - [x] Liveblocks room ID (content-topic-{id})
 - [x] 실시간 협업 에디터 (BlockNote + Liveblocks)
 - [x] 자동 저장 시스템 (5분마다, 마지막 사용자 퇴장 시)
 - [ ] 진행 단계 UI + 로직 (모달, 산출물 제출)
+
+**참고**: 팀 작업 공간 기능은 코드는 유지하되 현재 이벤트에서는 노출하지 않습니다.
 
 ### Phase 3: 모니터 대시보드 ✅ 완료
 - [x] 대시보드 레이아웃 (포스트잇 월 + 팀 진행 현황)
@@ -1227,10 +1366,12 @@ h3: 1.5rem (24px), semibold, line-height 1.4
 - [x] 팀 진행 현황 토글 기능
 - [x] 소개 페이지 링크
 
-### Phase 4: 관리자 페이지 ⏳ 대기중
-- [ ] 해커톤 설정 UI (/admin/settings)
-- [ ] 팀 관리 CRUD (/admin/teams)
-- [ ] 주제 관리 (/admin/topics)
+### Phase 4: 관리자 페이지 🔄 진행중
+- [x] 간단 관리자 로그인 (admin/claude)
+- [x] 해커톤 설정 UI (/admin/settings)
+- [x] 팀 관리 (/admin/teams)
+- [x] 주제 관리 (/admin/topics)
+- [x] 공지사항 관리
 
 ### Phase 5: 마무리 & 폴리싱 🔄 진행중
 - [x] 애니메이션 추가 (일부)
@@ -1536,3 +1677,19 @@ const getCurrentLevel = (points) => {
 4. 업적 시스템 구현
 
 질문이나 수정 사항이 있으면 말씀해주세요!
+
+---
+
+## 문서 업데이트 이력
+
+- **2025-10-18**: Flying Emojis 키보드 전용 모드 및 브로드캐스트 자기 수신 방지 추가, 포스트잇 스마트 배치 알고리즘 상세화
+- **2025-10-17**: 타이머 시스템, 공지사항 시스템, 포스트잇 색상 자동 배정 기능 추가
+- **초기 작성**: 전체 시스템 아키텍처, DB 설계, 기능 명세, 화면 설계, API 설계
+
+## 관련 문서
+
+- **CLAUDE.md**: 구현 과정 및 버그 수정 히스토리
+- **theme.md**: CSS 테마 및 디자인 토큰 정의
+
+**참조 가이드:**
+- 새로운 기능 개발 시 → `design.md`에서 전체 구조 확인 → `theme.md`에서 스타일 참조 → 구현 후 `CLAUDE.md`에 기록

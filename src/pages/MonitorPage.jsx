@@ -15,26 +15,13 @@ function MonitorPage() {
   const [error, setError] = useState(null)
   const [timeRemaining, setTimeRemaining] = useState(null)
   const [timeUntilStart, setTimeUntilStart] = useState(null)
-  const [currentUser, setCurrentUser] = useState(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [nickname, setNickname] = useState(null)
+  const [viewMode, setViewMode] = useState('postit-wall') // 'postit-wall' or 'comment-list'
 
-  // Check authentication and load user info
+  // Load nickname from localStorage
   useEffect(() => {
-    const checkAuth = async () => {
-      const authenticated = api.isAuthenticated()
-      setIsAuthenticated(authenticated)
-
-      if (authenticated) {
-        try {
-          const user = await api.getCurrentUser()
-          setCurrentUser(user)
-        } catch (error) {
-          console.error('Failed to load user:', error)
-        }
-      }
-    }
-
-    checkAuth()
+    const savedNickname = localStorage.getItem('nickname')
+    setNickname(savedNickname)
   }, [])
 
   // Load dashboard data
@@ -165,6 +152,17 @@ function MonitorPage() {
 
   return (
     <div className="monitor-page">
+      {/* Background Image */}
+      <div className="monitor-background">
+        <img src="/sure.png" alt="SUKATHON" className="monitor-background-image" />
+      </div>
+
+      {/* Floating Decorations */}
+      <div className="floating-decoration star" style={{ top: '10%', left: '10%', fontSize: '2rem' }}>⭐</div>
+      <div className="floating-decoration star" style={{ top: '20%', right: '15%', fontSize: '1.5rem' }}>✨</div>
+      <div className="floating-decoration star" style={{ bottom: '15%', left: '20%', fontSize: '2.5rem' }}>💫</div>
+      <div className="floating-decoration star" style={{ bottom: '25%', right: '10%', fontSize: '1.8rem' }}>🌟</div>
+
       {/* Announcements Banner - Outside RoomProvider for instant display */}
       <AnnouncementBanner announcements={announcements} />
 
@@ -188,8 +186,9 @@ function MonitorPage() {
             timeUntilStart={timeUntilStart}
             getStageLabel={getStageLabel}
             loadDashboardData={loadDashboardData}
-            isAuthenticated={isAuthenticated}
-            currentUser={currentUser}
+            nickname={nickname}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
           />
         </Suspense>
       </RoomProvider>
@@ -248,63 +247,26 @@ function AnnouncementBanner({ announcements }) {
   )
 }
 
-function MonitorContent({ teams, settings, timeRemaining, timeUntilStart, getStageLabel, loadDashboardData, isAuthenticated, currentUser }) {
+function MonitorContent({ teams, settings, timeRemaining, timeUntilStart, getStageLabel, loadDashboardData, nickname, viewMode, setViewMode }) {
+  const toggleViewMode = () => {
+    setViewMode(viewMode === 'postit-wall' ? 'comment-list' : 'postit-wall')
+  }
+
   return (
     <div className="monitor-page-content">
       {/* Floating Comments Overlay */}
-      <FloatingComments />
+      <FloatingComments viewMode={viewMode} toggleViewMode={toggleViewMode} />
 
       {/* Flying Emojis (YouTube Style) - Inside RoomProvider for Liveblocks sync */}
       <FlyingEmojis />
 
-
-      {/* Main Content - Split Layout */}
+      {/* Main Content - Full Screen Post-It Wall */}
       <main className="monitor-main">
-        <div className="monitor-layout">
-          {/* Left Side - Post-It Wall */}
-          <section className="postit-section-main">
-            <PostItWall currentUser={currentUser} isAuthenticated={isAuthenticated} />
+        <div className="monitor-layout monitor-layout-fullscreen">
+          {/* Post-It Wall - Full Screen */}
+          <section className="postit-section-fullscreen">
+            <PostItWall nickname={nickname} viewMode={viewMode} />
           </section>
-
-          {/* Right Side - Teams Grid */}
-          <section className="teams-section-mini">
-              <h2 className="section-title-mini">팀 진행 현황</h2>
-
-              {teams.length === 0 ? (
-                <div className="no-teams-mini">
-                  <p>팀 없음</p>
-                </div>
-              ) : (
-                <div className="teams-list-mini">
-                  {teams.map(team => (
-                    <div key={team.id} className="team-card-mini" style={{ borderLeftColor: team.color }}>
-                      <div className="team-mini-header">
-                        <div
-                          className="team-color-dot"
-                          style={{ backgroundColor: team.color }}
-                        ></div>
-                        <h3 className="team-name-mini">{team.name}</h3>
-                      </div>
-
-                      <div className="team-mini-info">
-                        <span className="team-mini-topic">{team.topic_title}</span>
-                        <span className="team-mini-stage">{getStageLabel(team.current_stage)}</span>
-                      </div>
-
-                      <div className="progress-bar-mini">
-                        <div
-                          className="progress-fill-mini"
-                          style={{
-                            width: `${team.progress_percentage}%`,
-                            backgroundColor: team.color
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
         </div>
       </main>
     </div>

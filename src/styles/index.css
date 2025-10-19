@@ -1,88 +1,129 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+KR:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Pretendard:wght@400;600;700;800;900&display=swap');
 
 :root {
-    --primary-color: #00ff41;
-    --secondary-color: #ff00ff;
-    --accent-color: #00d9ff;
-    --bg-dark: #0a0e27;
-    --bg-darker: #050814;
-    --text-light: #e0e0e0;
-    --text-dim: #8892b0;
-    --border-glow: rgba(0, 255, 65, 0.3);
-    --card-bg: rgba(15, 20, 40, 0.9);
-    --shadow-glow: 0 0 20px rgba(0, 255, 65, 0.2);
+  /* Primary Colors - 그라데이션 배경 */
+  --primary-blue: #4A90E2;
+  --primary-cyan: #50C9CE;
+  --primary-green: #7ED957;
+  
+  /* Accent Colors */
+  --accent-yellow: #FFD93D;
+  --accent-orange: #FFB347;
+  --accent-pink: #FF6B9D;
+  --accent-purple: #A78BFA;
+  
+  /* Neutral Colors */
+  --white: #FFFFFF;
+  --light-bg: #F0F9FF;
+  --dark-text: #1E293B;
+  --gray-text: #64748B;
+  
+  /* Gradient Backgrounds */
+  --gradient-main: linear-gradient(135deg, #4A90E2 0%, #50C9CE 50%, #7ED957 100%);
+  --gradient-card: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(240, 249, 255, 0.8) 100%);
+  
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(74, 144, 226, 0.1);
+  --shadow-md: 0 4px 16px rgba(74, 144, 226, 0.15);
+  --shadow-lg: 0 8px 32px rgba(74, 144, 226, 0.2);
+  --shadow-glow: 0 0 20px rgba(255, 217, 61, 0.4);
+  
+  /* Typography */
+  --font-primary: 'Pretendard', 'Noto Sans KR', sans-serif;
+  --font-display: 'Montserrat', 'Pretendard', sans-serif;
+  
+  /* Spacing */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
+  
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+  
+  /* Transitions */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
 }
 
+/* Global Styles */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-    font-family: 'Noto Sans KR', sans-serif;
-    background: var(--bg-darker);
-    color: var(--text-light);
-    line-height: 1.6;
-    overflow-x: hidden;
-    position: relative;
+  font-family: var(--font-primary);
+  color: var(--dark-text);
+  background: var(--gradient-main);
+  background-attachment: fixed;
+  line-height: 1.6;
+  overflow-x: hidden;
 }
 
-body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background:
-        radial-gradient(circle at 20% 50%, rgba(0, 255, 65, 0.05) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(255, 0, 255, 0.05) 0%, transparent 50%),
-        linear-gradient(180deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
-    z-index: -1;
-}
-
+/* Container */
 .container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
 }
 
 .spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid rgba(0, 255, 65, 0.1);
-    border-top-color: var(--primary-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(74, 144, 226, 0.1);
+  border-top-color: var(--primary-blue);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Floating Decorative Elements */
+.floating-decoration {
+  position: absolute;
+  animation: float 6s ease-in-out infinite;
+  opacity: 0.6;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-    width: 10px;
+  width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-    background: var(--bg-darker);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--primary-color);
-    border-radius: 5px;
+  background: var(--primary-cyan);
+  border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-color);
+  background: var(--primary-green);
 }

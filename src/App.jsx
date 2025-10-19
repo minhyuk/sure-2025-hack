@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import MonitorPage from './pages/MonitorPage'
 import ClockPage from './pages/ClockPage'
+import AdminLoginPage from './pages/AdminLoginPage'
 import AdminSettingsPage from './pages/AdminSettingsPage'
 import AdminTeamsPage from './pages/AdminTeamsPage'
 import AdminTopicsPage from './pages/AdminTopicsPage'
@@ -27,16 +28,16 @@ function App() {
     <LiveblocksProvider publicApiKey={publicApiKey}>
       <GlobalNav />
       <Routes>
-        {/* Landing page - Public Dashboard */}
-        <Route path="/" element={<MonitorPage />} />
+        {/* Landing page - 닉네임 입력 */}
+        <Route path="/" element={<HomePage />} />
 
-        {/* Intro page (public) */}
-        <Route path="/intro" element={<HomePage />} />
+        {/* Monitor page - 대시보드 */}
+        <Route path="/monitor" element={<MonitorPage />} />
 
         {/* Clock page (public) */}
         <Route path="/clock" element={<ClockPage />} />
 
-        {/* Auth pages (public) */}
+        {/* Auth pages (보류 - 코드는 유지하되 노출하지 않음) */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
@@ -46,6 +47,9 @@ function App() {
             <TopicPage />
           </ProtectedRoute>
         } />
+
+        {/* Admin login page (public) */}
+        <Route path="/admin" element={<AdminLoginPage />} />
 
         {/* Admin pages (requires admin role) */}
         <Route path="/admin/settings" element={
